@@ -20,7 +20,7 @@ UINT WM_TASKBARCREATED;
 double LAT = 0;
 double LON = 0;
 
-wstring WALLPAPERS[5];
+wstring WALLPAPERS[6];
 
 #define WM_TRAYICON (WM_USER + 1)
 
@@ -30,7 +30,6 @@ wstring WALLPAPERS[5];
 NOTIFYICONDATA nid;
 
 bool running = true;
-
 
 //
 // ================= 路径 =================
@@ -51,7 +50,6 @@ wstring getConfigPath()
 {
     return getExeDir() + L"\\config.ini";
 }
-
 
 //
 // ================= config =================
@@ -84,7 +82,6 @@ bool loadConfig()
     return true;
 }
 
-
 //
 // ================= 数学 =================
 //
@@ -98,7 +95,6 @@ double rad2deg(double r)
 {
     return r * 180.0 / PI;
 }
-
 
 //
 // ================= 日期 =================
@@ -143,7 +139,6 @@ int getDayOfYear(tm* t)
 
     return (t2 - t1) / 86400 + 1;
 }
-
 
 //
 // ================= 太阳高度角 =================
@@ -204,7 +199,6 @@ double getSolarAltitude()
     return rad2deg(altitude);
 }
 
-
 //
 // ================= 壁纸 =================
 //
@@ -236,9 +230,9 @@ void setWallpaper(const wchar_t* path)
 wstring getFilename(const wstring& path)
 {
     size_t pos = path.find_last_of(L"\\/");
+
     return path.substr(pos + 1);
 }
-
 
 //
 // ================= 区域 =================
@@ -246,12 +240,12 @@ wstring getFilename(const wstring& path)
 
 int getZone(double angle)
 {
-    if (angle < -12) return 1;
-    if (angle < 10)  return 4;
-    if (angle < 40)  return 2;
-    return 3;
+    if (angle < -12) return 5;  // Night
+    if (angle < 10)  return 1;  // Sunrise / Sunset
+    if (angle < 35)  return 2;  // Morning / Evening
+    if (angle < 50)  return 3;  // Daytime
+    return 4;  // Noon
 }
-
 
 //
 // ================= 托盘 =================
@@ -278,7 +272,6 @@ void updateTray(double angle, const wstring& wallpaper)
     Shell_NotifyIcon(NIM_MODIFY, &nid);
 }
 
-
 void ShowTrayMenu(HWND hwnd)
 {
     POINT pt;
@@ -304,7 +297,6 @@ void ShowTrayMenu(HWND hwnd)
     DestroyMenu(menu);
 }
 
-
 //
 // ================= 窗口过程 =================
 //
@@ -325,7 +317,6 @@ LRESULT CALLBACK WindowProc(
 
     switch (msg)
     {
-
     case WM_TRAYICON:
 
         if (lParam == WM_RBUTTONUP)
@@ -361,7 +352,6 @@ LRESULT CALLBACK WindowProc(
     return DefWindowProc(hwnd, msg, wParam, lParam);
 }
 
-
 //
 // ================= 主程序 =================
 //
@@ -379,7 +369,6 @@ int WINAPI wWinMain(
     if (GetLastError() == ERROR_ALREADY_EXISTS)
         return 0;
 
-
     if (!loadConfig())
     {
         MessageBoxW(
@@ -391,10 +380,8 @@ int WINAPI wWinMain(
         return 0;
     }
 
-
     // Register Explorer restart message
     WM_TASKBARCREATED = RegisterWindowMessage(L"TaskbarCreated");
-
 
     WNDCLASS wc = {};
 
@@ -403,7 +390,6 @@ int WINAPI wWinMain(
     wc.lpszClassName = L"SolarWallpaperClass";
 
     RegisterClass(&wc);
-
 
     HWND hwnd =
         CreateWindowEx(
@@ -414,7 +400,6 @@ int WINAPI wWinMain(
             0,0,0,0,
             NULL,NULL,hInstance,NULL
         );
-
 
     nid = {};
     nid.cbSize = sizeof(nid);
@@ -429,14 +414,13 @@ int WINAPI wWinMain(
 
     addTrayIcon();
 
-
     wstring baseDir = getExeDir();
 
-    WALLPAPERS[1] = baseDir + L"\\wallpaper\\1.jpg";
-    WALLPAPERS[2] = baseDir + L"\\wallpaper\\2.jpg";
-    WALLPAPERS[3] = baseDir + L"\\wallpaper\\3.jpg";
-    WALLPAPERS[4] = baseDir + L"\\wallpaper\\4.jpg";
-
+    WALLPAPERS[5] = baseDir + L"\\wallpaper\\night.JPG";
+    WALLPAPERS[1] = baseDir + L"\\wallpaper\\sunrise_sunset.JPG";
+    WALLPAPERS[2] = baseDir + L"\\wallpaper\\morning.JPG";
+    WALLPAPERS[3] = baseDir + L"\\wallpaper\\day.JPG";
+    WALLPAPERS[4] = baseDir + L"\\wallpaper\\noon.JPG";
 
     thread worker([&]()
     {
@@ -466,7 +450,6 @@ int WINAPI wWinMain(
         }
     });
 
-
     MSG msg;
 
     while (GetMessage(&msg, NULL, 0, 0))
@@ -474,7 +457,6 @@ int WINAPI wWinMain(
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
-
 
     worker.join();
 

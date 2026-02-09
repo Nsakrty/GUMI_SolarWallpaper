@@ -38,10 +38,11 @@ The program calculates solar altitude using:
 Then selects wallpaper based on altitude range:
 
 ```
-Altitude < -12°     → wallpaper 1 (night)
--12° to 10°         → wallpaper 4 (sunrise / sunset)
-10° to 40°          → wallpaper 2 (day)
-40° to 90°          → wallpaper 3 (noon)
+Altitude < -12°     Night
+-12° ~ 10°        Sunrise / Sunset
+10° ~ 35°         Morning / Evening
+35° ~ 50°         Daytime
+50° ~ 90°         Noon
 ```
 
 Wallpaper switching occurs automatically when entering a new zone.
@@ -297,8 +298,9 @@ Nsakrty
 ```
 高度角 < -12°     夜晚
 -12° ~ 10°        日出 / 日落
-10° ~ 40°         白天
-40° ~ 90°         正午
+10° ~ 35°         早晨 / 傍晚
+35° ~ 50°         白天
+50° ~ 90°         正午
 ```
 
 进入新区间时自动切换壁纸。
