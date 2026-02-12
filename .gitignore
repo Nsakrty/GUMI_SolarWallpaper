@@ -2,7 +2,7 @@
 .trae/
 
 # Configuration files
-config.ini
+# config.ini
 
 # Executable files
 *.exe

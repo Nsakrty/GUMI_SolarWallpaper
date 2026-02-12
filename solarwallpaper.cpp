@@ -28,6 +28,10 @@ NOTIFYICONDATA nid;
 
 double LAT = 0;
 double LON = 0;
+double THRESHOLD_NIGHT = -12;
+double THRESHOLD_SUNRISE = 10;
+double THRESHOLD_MORNING = 35;
+double THRESHOLD_DAY = 50;
 wstring WALLPAPERS[6];
 bool running = true;
 
@@ -53,11 +57,11 @@ wstring getConfigPath()
 // ================= 配置文件 =================
 //
 
-double readIniDouble(const wchar_t* key)
+double readIniDouble(const wchar_t* section, const wchar_t* key)
 {
     wchar_t buffer[64];
     GetPrivateProfileStringW(
-        L"location",
+        section,
         key,
         L"0",
         buffer,
@@ -69,8 +73,21 @@ double readIniDouble(const wchar_t* key)
 
 bool loadConfig()
 {
-    LAT = readIniDouble(L"lat");
-    LON = readIniDouble(L"lon");
+    LAT = readIniDouble(L"location", L"lat");
+    LON = readIniDouble(L"location", L"lon");
+    
+    // Read thresholds from config
+    THRESHOLD_NIGHT = readIniDouble(L"thresholds", L"night");
+    THRESHOLD_SUNRISE = readIniDouble(L"thresholds", L"sunrise");
+    THRESHOLD_MORNING = readIniDouble(L"thresholds", L"morning");
+    THRESHOLD_DAY = readIniDouble(L"thresholds", L"day");
+    
+    // Use default values if config is missing
+    if (THRESHOLD_NIGHT == 0) THRESHOLD_NIGHT = -12;
+    if (THRESHOLD_SUNRISE == 0) THRESHOLD_SUNRISE = 10;
+    if (THRESHOLD_MORNING == 0) THRESHOLD_MORNING = 35;
+    if (THRESHOLD_DAY == 0) THRESHOLD_DAY = 50;
+    
     return !(LAT == 0 && LON == 0);
 }
 
@@ -203,10 +220,10 @@ wstring getFilename(const wstring& path)
 
 int getZone(double angle)
 {
-    if (angle < -12) return 5;
-    if (angle < 10)  return 1;
-    if (angle < 35)  return 2;
-    if (angle < 50)  return 3;
+    if (angle < THRESHOLD_NIGHT) return 5;
+    if (angle < THRESHOLD_SUNRISE)  return 1;
+    if (angle < THRESHOLD_MORNING)  return 2;
+    if (angle < THRESHOLD_DAY)  return 3;
     return 4;
 }
 
@@ -239,21 +256,21 @@ wstring calculateNextSwitchTime()
     {
         switch (currentZone)
         {
-        case 1: nextThreshold = 10; break;
-        case 2: nextThreshold = 35; break;
-        case 3: nextThreshold = 50; break;
+        case 1: nextThreshold = THRESHOLD_SUNRISE; break;
+        case 2: nextThreshold = THRESHOLD_MORNING; break;
+        case 3: nextThreshold = THRESHOLD_DAY; break;
         case 4: return L"No switch today";
-        case 5: nextThreshold = -12; break;
+        case 5: nextThreshold = THRESHOLD_NIGHT; break;
         }
     }
     else
     {
         switch (currentZone)
         {
-        case 1: nextThreshold = -12; break;
-        case 2: nextThreshold = 10; break;
-        case 3: nextThreshold = 35; break;
-        case 4: nextThreshold = 50; break;
+        case 1: nextThreshold = THRESHOLD_NIGHT; break;
+        case 2: nextThreshold = THRESHOLD_SUNRISE; break;
+        case 3: nextThreshold = THRESHOLD_MORNING; break;
+        case 4: nextThreshold = THRESHOLD_DAY; break;
         case 5: return L"No switch today";
         }
     }
