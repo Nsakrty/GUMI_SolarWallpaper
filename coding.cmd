@@ -1,3 +1,5 @@
+taskkill /f /im solarwallpaper.exe
+
 g++ solarwallpaper.cpp icon_res.o -o solarwallpaper.exe ^
 -static ^
 -static-libgcc ^
@@ -9,5 +11,6 @@ g++ solarwallpaper.cpp icon_res.o -o solarwallpaper.exe ^
 -O2 ^
 -s
 
+start solarwallpaper.exe
 
 pause

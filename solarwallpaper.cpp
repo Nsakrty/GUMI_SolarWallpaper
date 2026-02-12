@@ -1,48 +1,46 @@
-#include <windows.h>
-#include <shellapi.h>
-#include <string>
-#include <chrono>
-#include <thread>
 #include <cmath>
 #include <ctime>
+#include <string>
+#include <thread>
+#include <chrono>
+
+#include <windows.h>
+#include <shellapi.h>
 
 using namespace std;
 
 //
-// ================= 常量 =================
+// ================= 常量定义 =================
 //
 
 const double PI = 3.14159265358979323846;
 
-// Explorer restart message
-UINT WM_TASKBARCREATED;
-
-double LAT = 0;
-double LON = 0;
-
-wstring WALLPAPERS[6];
-
 #define WM_TRAYICON (WM_USER + 1)
-
 #define ID_TRAY_EXIT   1001
 #define ID_TRAY_RELOAD 1002
 
+//
+// ================= 全局变量 =================
+//
+
+UINT WM_TASKBARCREATED;
 NOTIFYICONDATA nid;
 
+double LAT = 0;
+double LON = 0;
+wstring WALLPAPERS[6];
 bool running = true;
 
 //
-// ================= 路径 =================
+// ================= 路径工具 =================
 //
 
 wstring getExeDir()
 {
     wchar_t path[MAX_PATH];
     GetModuleFileNameW(NULL, path, MAX_PATH);
-
     wstring full(path);
     size_t pos = full.find_last_of(L"\\/");
-
     return full.substr(0, pos);
 }
 
@@ -52,13 +50,12 @@ wstring getConfigPath()
 }
 
 //
-// ================= config =================
+// ================= 配置文件 =================
 //
 
 double readIniDouble(const wchar_t* key)
 {
     wchar_t buffer[64];
-
     GetPrivateProfileStringW(
         L"location",
         key,
@@ -67,7 +64,6 @@ double readIniDouble(const wchar_t* key)
         64,
         getConfigPath().c_str()
     );
-
     return _wtof(buffer);
 }
 
@@ -75,15 +71,11 @@ bool loadConfig()
 {
     LAT = readIniDouble(L"lat");
     LON = readIniDouble(L"lon");
-
-    if (LAT == 0 && LON == 0)
-        return false;
-
-    return true;
+    return !(LAT == 0 && LON == 0);
 }
 
 //
-// ================= 数学 =================
+// ================= 数学工具 =================
 //
 
 double deg2rad(double d)
@@ -97,7 +89,7 @@ double rad2deg(double r)
 }
 
 //
-// ================= 日期 =================
+// ================= 日期时间 =================
 //
 
 int solarOffsetTable[12][3] =
@@ -133,20 +125,18 @@ int getDayOfYear(tm* t)
     tm start = *t;
     start.tm_mon  = 0;
     start.tm_mday = 1;
-
     time_t t1 = mktime(&start);
     time_t t2 = mktime(t);
-
     return (t2 - t1) / 86400 + 1;
 }
 
 //
-// ================= 太阳高度角 =================
+// ================= 太阳高度角计算 =================
 //
 
-double getSolarAltitude()
+double getSolarAltitude(time_t* timePtr = NULL)
 {
-    time_t now = time(NULL);
+    time_t now = timePtr ? *timePtr : time(NULL);
 
     tm local;
     localtime_s(&local, &now);
@@ -160,60 +150,34 @@ double getSolarAltitude()
 
     int N = getDayOfYear(&local);
 
-    double timeHour =
-        hour +
-        min / 60.0 +
-        sec / 3600.0;
+    double timeHour = hour + min / 60.0 + sec / 3600.0;
+    double longitudeCorrection = (LON - 120.0) * 4.0;
+    double offset = getSolarOffsetMinutes(month, day);
+    double solarTime = timeHour + longitudeCorrection / 60.0 - offset / 60.0;
+    double hourAngle = 15.0 * (solarTime - 12.0);
 
-    double longitudeCorrection =
-        (LON - 120.0) * 4.0;
-
-    double offset =
-        getSolarOffsetMinutes(month, day);
-
-    double solarTime =
-        timeHour
-        + longitudeCorrection / 60.0
-        - offset / 60.0;
-
-    double hourAngle =
-        15.0 * (solarTime - 12.0);
-
-    double decl =
-        23.45 *
-        sin(deg2rad(
-            360.0 * (284 + N) / 365.0
-        ));
+    double decl = 23.45 * sin(deg2rad(360.0 * (284 + N) / 365.0));
 
     double latRad  = deg2rad(LAT);
     double declRad = deg2rad(decl);
     double hourRad = deg2rad(hourAngle);
 
-    double altitude =
-        asin(
-            sin(latRad)*sin(declRad)
-            +
-            cos(latRad)*cos(declRad)*cos(hourRad)
-        );
+    double altitude = asin(
+        sin(latRad) * sin(declRad) +
+        cos(latRad) * cos(declRad) * cos(hourRad)
+    );
 
     return rad2deg(altitude);
 }
 
 //
-// ================= 壁纸 =================
+// ================= 壁纸管理 =================
 //
 
 wstring getCurrentWallpaper()
 {
     wchar_t buffer[MAX_PATH];
-
-    SystemParametersInfoW(
-        SPI_GETDESKWALLPAPER,
-        MAX_PATH,
-        buffer,
-        0
-    );
-
+    SystemParametersInfoW(SPI_GETDESKWALLPAPER, MAX_PATH, buffer, 0);
     return buffer;
 }
 
@@ -230,25 +194,120 @@ void setWallpaper(const wchar_t* path)
 wstring getFilename(const wstring& path)
 {
     size_t pos = path.find_last_of(L"\\/");
-
     return path.substr(pos + 1);
 }
 
 //
-// ================= 区域 =================
+// ================= 区域判断 =================
 //
 
 int getZone(double angle)
 {
-    if (angle < -12) return 5;  // Night
-    if (angle < 10)  return 1;  // Sunrise / Sunset
-    if (angle < 35)  return 2;  // Morning / Evening
-    if (angle < 50)  return 3;  // Daytime
-    return 4;  // Noon
+    if (angle < -12) return 5;
+    if (angle < 10)  return 1;
+    if (angle < 35)  return 2;
+    if (angle < 50)  return 3;
+    return 4;
 }
 
 //
-// ================= 托盘 =================
+// ================= 下次切换时间计算 =================
+//
+
+wstring calculateNextSwitchTime()
+{
+    time_t now = time(NULL);
+    tm local;
+    localtime_s(&local, &now);
+    
+    double currentAngle = getSolarAltitude();
+    int currentZone = getZone(currentAngle);
+    
+    // 确定下一个区域边界的高度角阈值
+    double nextThreshold = 0;
+    bool isIncreasing = false;
+    
+    // 判断太阳高度角是在上升还是下降
+    tm testTime = local;
+    testTime.tm_min += 10;
+    time_t testNow = mktime(&testTime);
+    double testAngle = getSolarAltitude(&testNow);
+    isIncreasing = (testAngle > currentAngle);
+    
+    // 根据当前区域和变化趋势确定下一个阈值
+    if (isIncreasing)
+    {
+        switch (currentZone)
+        {
+        case 1: nextThreshold = 10; break;
+        case 2: nextThreshold = 35; break;
+        case 3: nextThreshold = 50; break;
+        case 4: return L"No switch today";
+        case 5: nextThreshold = -12; break;
+        }
+    }
+    else
+    {
+        switch (currentZone)
+        {
+        case 1: nextThreshold = -12; break;
+        case 2: nextThreshold = 10; break;
+        case 3: nextThreshold = 35; break;
+        case 4: nextThreshold = 50; break;
+        case 5: return L"No switch today";
+        }
+    }
+    
+    // 模拟时间流逝，寻找边界时间
+    tm searchTime = local;
+    time_t searchNow = now;
+    
+    // 最大搜索范围：24小时
+    for (int i = 0; i < 288; i++) // 288个10分钟间隔 = 24小时
+    {
+        searchTime.tm_min += 10;
+        searchNow = mktime(&searchTime);
+        localtime_s(&searchTime, &searchNow);
+        
+        double searchAngle = getSolarAltitude(&searchNow);
+        
+        if ((isIncreasing && searchAngle >= nextThreshold) || 
+            (!isIncreasing && searchAngle <= nextThreshold))
+        {
+            // 找到大致范围后，缩小到分钟级精度
+            tm preciseTime = searchTime;
+            preciseTime.tm_min -= 10;
+            time_t preciseNow = mktime(&preciseTime);
+            
+            for (int j = 0; j < 10; j++)
+            {
+                preciseTime.tm_min += 1;
+                preciseNow = mktime(&preciseTime);
+                localtime_s(&preciseTime, &preciseNow);
+                
+                double preciseAngle = getSolarAltitude(&preciseNow);
+                
+                if ((isIncreasing && preciseAngle >= nextThreshold) || 
+                    (!isIncreasing && preciseAngle <= nextThreshold))
+                {
+                    wchar_t timeStr[32];
+                    swprintf_s(
+                        timeStr, 
+                        L"%02d:%02d", 
+                        preciseTime.tm_hour, 
+                        preciseTime.tm_min
+                    );
+                    return timeStr;
+                }
+            }
+        }
+    }
+    
+    return L"No switch today";
+}
+
+//
+// ================= 系统托盘 =================
 //
 
 void addTrayIcon()
@@ -256,19 +315,17 @@ void addTrayIcon()
     Shell_NotifyIcon(NIM_ADD, &nid);
 }
 
-void updateTray(double angle, const wstring& wallpaper)
+void updateTray(double angle, const wstring& wallpaper, const wstring& nextSwitchTime)
 {
     wchar_t text[128];
-
     swprintf_s(
         text,
-        L"Solar Altitude: %.2f° | %s",
+        L"Solar Altitude: %.2f°\nWallpaper: %s\nNext Switch: %s",
         angle,
-        getFilename(wallpaper).c_str()
+        getFilename(wallpaper).c_str(),
+        nextSwitchTime.c_str()
     );
-
     wcscpy_s(nid.szTip, text);
-
     Shell_NotifyIcon(NIM_MODIFY, &nid);
 }
 
@@ -276,14 +333,12 @@ void ShowTrayMenu(HWND hwnd)
 {
     POINT pt;
     GetCursorPos(&pt);
-
     HMENU menu = CreatePopupMenu();
 
     AppendMenuW(menu, MF_STRING, ID_TRAY_RELOAD, L"Reload config");
     AppendMenuW(menu, MF_STRING, ID_TRAY_EXIT,   L"Exit");
 
     SetForegroundWindow(hwnd);
-
     TrackPopupMenu(
         menu,
         TPM_BOTTOMALIGN | TPM_LEFTALIGN,
@@ -293,7 +348,6 @@ void ShowTrayMenu(HWND hwnd)
         hwnd,
         NULL
     );
-
     DestroyMenu(menu);
 }
 
@@ -301,14 +355,8 @@ void ShowTrayMenu(HWND hwnd)
 // ================= 窗口过程 =================
 //
 
-LRESULT CALLBACK WindowProc(
-    HWND hwnd,
-    UINT msg,
-    WPARAM wParam,
-    LPARAM lParam
-)
+LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    // Explorer restarted
     if (msg == WM_TASKBARCREATED)
     {
         addTrayIcon();
@@ -318,34 +366,27 @@ LRESULT CALLBACK WindowProc(
     switch (msg)
     {
     case WM_TRAYICON:
-
         if (lParam == WM_RBUTTONUP)
             ShowTrayMenu(hwnd);
-
         break;
 
     case WM_COMMAND:
-
         if (LOWORD(wParam) == ID_TRAY_EXIT)
         {
             running = false;
             Shell_NotifyIcon(NIM_DELETE, &nid);
             PostQuitMessage(0);
         }
-
         if (LOWORD(wParam) == ID_TRAY_RELOAD)
         {
             loadConfig();
         }
-
         break;
 
     case WM_DESTROY:
-
         running = false;
         Shell_NotifyIcon(NIM_DELETE, &nid);
         PostQuitMessage(0);
-
         break;
     }
 
@@ -356,16 +397,9 @@ LRESULT CALLBACK WindowProc(
 // ================= 主程序 =================
 //
 
-int WINAPI wWinMain(
-    HINSTANCE hInstance,
-    HINSTANCE,
-    LPWSTR,
-    int
-)
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int)
 {
-    HANDLE mutex =
-        CreateMutexW(NULL, TRUE, L"SolarWallpaperMutex");
-
+    HANDLE mutex = CreateMutexW(NULL, TRUE, L"SolarWallpaperMutex");
     if (GetLastError() == ERROR_ALREADY_EXISTS)
         return 0;
 
@@ -380,26 +414,22 @@ int WINAPI wWinMain(
         return 0;
     }
 
-    // Register Explorer restart message
     WM_TASKBARCREATED = RegisterWindowMessage(L"TaskbarCreated");
 
     WNDCLASS wc = {};
-
     wc.lpfnWndProc   = WindowProc;
     wc.hInstance     = hInstance;
     wc.lpszClassName = L"SolarWallpaperClass";
-
     RegisterClass(&wc);
 
-    HWND hwnd =
-        CreateWindowEx(
-            0,
-            wc.lpszClassName,
-            L"SolarWallpaper",
-            0,
-            0,0,0,0,
-            NULL,NULL,hInstance,NULL
-        );
+    HWND hwnd = CreateWindowEx(
+        0,
+        wc.lpszClassName,
+        L"SolarWallpaper",
+        0,
+        0,0,0,0,
+        NULL,NULL,hInstance,NULL
+    );
 
     nid = {};
     nid.cbSize = sizeof(nid);
@@ -407,15 +437,11 @@ int WINAPI wWinMain(
     nid.uID    = 1;
     nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
     nid.uCallbackMessage = WM_TRAYICON;
-
     nid.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(1));
-
     wcscpy_s(nid.szTip, L"SolarWallpaper");
-
     addTrayIcon();
 
     wstring baseDir = getExeDir();
-
     WALLPAPERS[5] = baseDir + L"\\wallpaper\\night.JPG";
     WALLPAPERS[1] = baseDir + L"\\wallpaper\\sunrise_sunset.JPG";
     WALLPAPERS[2] = baseDir + L"\\wallpaper\\morning.JPG";
@@ -425,33 +451,26 @@ int WINAPI wWinMain(
     thread worker([&]()
     {
         int lastZone = -1;
-
         while (running)
         {
             double angle = getSolarAltitude();
-
             int zone = getZone(angle);
-
             wstring target = WALLPAPERS[zone];
 
             if (zone != lastZone)
             {
                 if (getCurrentWallpaper() != target)
                     setWallpaper(target.c_str());
-
                 lastZone = zone;
             }
 
-            updateTray(angle, target);
-
-            this_thread::sleep_for(
-                chrono::seconds(60)
-            );
+            wstring nextSwitchTime = calculateNextSwitchTime();
+            updateTray(angle, target, nextSwitchTime);
+            this_thread::sleep_for(chrono::seconds(60));
         }
     });
 
     MSG msg;
-
     while (GetMessage(&msg, NULL, 0, 0))
     {
         TranslateMessage(&msg);
@@ -459,8 +478,6 @@ int WINAPI wWinMain(
     }
 
     worker.join();
-
     ReleaseMutex(mutex);
-
     return 0;
 }

@@ -1,0 +1,12 @@
+# Trae IDE files
+.trae/
+
+# Configuration files
+config.ini
+
+# Executable files
+*.exe
+*.o
+
+# Shortcut files
+*.lnk
