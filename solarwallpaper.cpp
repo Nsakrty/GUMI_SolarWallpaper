@@ -259,8 +259,14 @@ wstring calculateNextSwitchTime()
         case 1: nextThreshold = THRESHOLD_SUNRISE; break;
         case 2: nextThreshold = THRESHOLD_MORNING; break;
         case 3: nextThreshold = THRESHOLD_DAY; break;
-        case 4: return L"No switch today";
-        case 5: nextThreshold = THRESHOLD_NIGHT; break;
+        case 4: 
+            // 中午时分，太阳开始下降，下一个阈值应该是THRESHOLD_DAY
+            nextThreshold = THRESHOLD_DAY;
+            break;
+        case 5: 
+            // 夜间，太阳正在上升，下一个阈值是THRESHOLD_NIGHT（黎明）
+            nextThreshold = THRESHOLD_NIGHT;
+            break;
         }
     }
     else
@@ -270,8 +276,14 @@ wstring calculateNextSwitchTime()
         case 1: nextThreshold = THRESHOLD_NIGHT; break;
         case 2: nextThreshold = THRESHOLD_SUNRISE; break;
         case 3: nextThreshold = THRESHOLD_MORNING; break;
-        case 4: nextThreshold = THRESHOLD_DAY; break;
-        case 5: return L"No switch today";
+        case 4: 
+            // 中午时分，太阳开始下降，下一个阈值是THRESHOLD_DAY
+            nextThreshold = THRESHOLD_DAY;
+            break;
+        case 5: 
+            // 夜间，太阳已经下降，下一个阈值是THRESHOLD_NIGHT（黄昏）
+            nextThreshold = THRESHOLD_NIGHT;
+            break;
         }
     }
     
@@ -279,8 +291,8 @@ wstring calculateNextSwitchTime()
     tm searchTime = local;
     time_t searchNow = now;
     
-    // 最大搜索范围：24小时
-    for (int i = 0; i < 288; i++) // 288个10分钟间隔 = 24小时
+    // 最大搜索范围：7天，足够覆盖任何可能的情况
+    for (int i = 0; i < 1008; i++) // 1008个10分钟间隔 = 7天
     {
         searchTime.tm_min += 10;
         searchNow = mktime(&searchTime);

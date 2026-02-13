@@ -12,5 +12,3 @@ g++ solarwallpaper.cpp icon_res.o -o solarwallpaper.exe ^
 -s
 
 start solarwallpaper.exe
-
-pause
