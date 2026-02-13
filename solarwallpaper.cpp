@@ -251,40 +251,27 @@ wstring calculateNextSwitchTime()
     double testAngle = getSolarAltitude(&testNow);
     isIncreasing = (testAngle > currentAngle);
     
-    // 根据当前区域和变化趋势确定下一个阈值
-    if (isIncreasing)
+    // 根据当前区域确定下一个阈值
+    switch (currentZone)
     {
-        switch (currentZone)
-        {
-        case 1: nextThreshold = THRESHOLD_SUNRISE; break;
-        case 2: nextThreshold = THRESHOLD_MORNING; break;
-        case 3: nextThreshold = THRESHOLD_DAY; break;
-        case 4: 
-            // 中午时分，太阳开始下降，下一个阈值应该是THRESHOLD_DAY
-            nextThreshold = THRESHOLD_DAY;
-            break;
-        case 5: 
-            // 夜间，太阳正在上升，下一个阈值是THRESHOLD_NIGHT（黎明）
-            nextThreshold = THRESHOLD_NIGHT;
-            break;
-        }
-    }
-    else
-    {
-        switch (currentZone)
-        {
-        case 1: nextThreshold = THRESHOLD_NIGHT; break;
-        case 2: nextThreshold = THRESHOLD_SUNRISE; break;
-        case 3: nextThreshold = THRESHOLD_MORNING; break;
-        case 4: 
-            // 中午时分，太阳开始下降，下一个阈值是THRESHOLD_DAY
-            nextThreshold = THRESHOLD_DAY;
-            break;
-        case 5: 
-            // 夜间，太阳已经下降，下一个阈值是THRESHOLD_NIGHT（黄昏）
-            nextThreshold = THRESHOLD_NIGHT;
-            break;
-        }
+    case 1: // 日出/日落
+        if (isIncreasing) 
+            nextThreshold = THRESHOLD_MORNING; // 上升到早晨
+        else 
+            nextThreshold = THRESHOLD_NIGHT; // 下降到夜间
+        break;
+    case 2: // 早晨
+        nextThreshold = THRESHOLD_DAY; // 上升到白天
+        break;
+    case 3: // 白天
+        nextThreshold = THRESHOLD_DAY; // 下降到白天（中午后）
+        break;
+    case 4: // 中午
+        nextThreshold = THRESHOLD_DAY; // 下降到白天
+        break;
+    case 5: // 夜间
+        nextThreshold = THRESHOLD_SUNRISE; // 上升到日出
+        break;
     }
     
     // 模拟时间流逝，寻找边界时间
@@ -300,33 +287,69 @@ wstring calculateNextSwitchTime()
         
         double searchAngle = getSolarAltitude(&searchNow);
         
-        if ((isIncreasing && searchAngle >= nextThreshold) || 
-            (!isIncreasing && searchAngle <= nextThreshold))
+        // 特殊处理夜间：寻找太阳上升到THRESHOLD_SUNRISE的时间
+        if (currentZone == 5)
         {
-            // 找到大致范围后，缩小到分钟级精度
-            tm preciseTime = searchTime;
-            preciseTime.tm_min -= 10;
-            time_t preciseNow = mktime(&preciseTime);
-            
-            for (int j = 0; j < 10; j++)
+            if (searchAngle >= nextThreshold) // 太阳上升到日出阈值
             {
-                preciseTime.tm_min += 1;
-                preciseNow = mktime(&preciseTime);
-                localtime_s(&preciseTime, &preciseNow);
+                // 找到大致范围后，缩小到分钟级精度
+                tm preciseTime = searchTime;
+                preciseTime.tm_min -= 10;
+                time_t preciseNow = mktime(&preciseTime);
                 
-                double preciseAngle = getSolarAltitude(&preciseNow);
-                
-                if ((isIncreasing && preciseAngle >= nextThreshold) || 
-                    (!isIncreasing && preciseAngle <= nextThreshold))
+                for (int j = 0; j < 10; j++)
                 {
-                    wchar_t timeStr[32];
-                    swprintf_s(
-                        timeStr, 
-                        L"%02d:%02d", 
-                        preciseTime.tm_hour, 
-                        preciseTime.tm_min
-                    );
-                    return timeStr;
+                    preciseTime.tm_min += 1;
+                    preciseNow = mktime(&preciseTime);
+                    localtime_s(&preciseTime, &preciseNow);
+                    
+                    double preciseAngle = getSolarAltitude(&preciseNow);
+                    
+                    if (preciseAngle >= nextThreshold)
+                    {
+                        wchar_t timeStr[32];
+                        swprintf_s(
+                            timeStr, 
+                            L"%02d:%02d", 
+                            preciseTime.tm_hour, 
+                            preciseTime.tm_min
+                        );
+                        return timeStr;
+                    }
+                }
+            }
+        }
+        else
+        {
+            // 其他时间段：根据变化趋势判断
+            if ((isIncreasing && searchAngle >= nextThreshold) || 
+                (!isIncreasing && searchAngle <= nextThreshold))
+            {
+                // 找到大致范围后，缩小到分钟级精度
+                tm preciseTime = searchTime;
+                preciseTime.tm_min -= 10;
+                time_t preciseNow = mktime(&preciseTime);
+                
+                for (int j = 0; j < 10; j++)
+                {
+                    preciseTime.tm_min += 1;
+                    preciseNow = mktime(&preciseTime);
+                    localtime_s(&preciseTime, &preciseNow);
+                    
+                    double preciseAngle = getSolarAltitude(&preciseNow);
+                    
+                    if ((isIncreasing && preciseAngle >= nextThreshold) || 
+                        (!isIncreasing && preciseAngle <= nextThreshold))
+                    {
+                        wchar_t timeStr[32];
+                        swprintf_s(
+                            timeStr, 
+                            L"%02d:%02d", 
+                            preciseTime.tm_hour, 
+                            preciseTime.tm_min
+                        );
+                        return timeStr;
+                    }
                 }
             }
         }

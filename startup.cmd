@@ -14,6 +14,9 @@ echo        SolarWallpaper Setup
 echo ================================
 echo.
 
+:: Reset choice variable
+set "choice=-1"
+
 :: Startup status
 reg query "%REGKEY%" /v "%APPNAME%" >nul 2>&1
 if !errorlevel!==0 (
@@ -38,7 +41,9 @@ echo.
 :: Config status
 if exist "%CONFIG%" (
     echo Current location:
-    type "%CONFIG%"
+    for /f "tokens=1,2 delims==" %%a in ('findstr "lat lon" "%CONFIG%"') do (
+        echo %%a = %%b
+    )
 ) else (
     echo Location not configured
 )
@@ -50,7 +55,8 @@ echo 2. Enable startup
 echo 3. Disable startup
 echo 4. Start now
 echo 5. Stop now
-echo 6. Exit
+echo 6. Restart
+echo 7. Exit
 echo --------------------------------
 echo.
 
@@ -61,7 +67,8 @@ if "%choice%"=="2" goto enable
 if "%choice%"=="3" goto disable
 if "%choice%"=="4" goto startnow
 if "%choice%"=="5" goto stopnow
-if "%choice%"=="6" exit
+if "%choice%"=="6" goto restart
+if "%choice%"=="7" exit
 
 goto menu
 
@@ -205,8 +212,14 @@ tasklist /FI "IMAGENAME eq %EXE%" | find /I "%EXE%" >nul
 if !errorlevel!==0 (
     echo SolarWallpaper is already running.
 ) else (
-    start "" "%cd%\%EXE%"
-    echo SolarWallpaper started successfully.
+    pushd "%~dp0"
+    start "" "%EXE%"
+    popd
+    if !errorlevel!==0 (
+        echo SolarWallpaper started successfully.
+    ) else (
+        echo Failed to start SolarWallpaper.
+    )
 )
 
 pause
@@ -221,6 +234,32 @@ if !errorlevel!==0 (
     echo SolarWallpaper stopped successfully.
 ) else (
     echo SolarWallpaper is not running.
+)
+
+pause
+goto menu
+
+
+:restart
+cls
+echo Restarting SolarWallpaper...
+echo.
+
+:: Stop first
+taskkill /IM "%EXE%" /F >nul 2>&1
+
+:: Wait a moment
+ping 127.0.0.1 -n 2 >nul
+
+:: Start now
+pushd "%~dp0"
+start "" "%EXE%"
+popd
+
+if !errorlevel!==0 (
+    echo SolarWallpaper restarted successfully.
+) else (
+    echo Failed to restart SolarWallpaper.
 )
 
 pause
