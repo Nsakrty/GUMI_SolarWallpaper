@@ -2,6 +2,9 @@
 title SolarWallpaper Setup
 setlocal EnableDelayedExpansion
 
+:: Enable ANSI escape sequences
+for /f %%a in ('echo prompt $E ^| cmd') do set "ESC=%%a"
+
 set "APPNAME=SolarWallpaper"
 set "REGKEY=HKCU\Software\Microsoft\Windows\CurrentVersion\Run"
 set "CONFIG=config.ini"
@@ -21,19 +24,20 @@ set "choice=-1"
 reg query "%REGKEY%" /v "%APPNAME%" >nul 2>&1
 if !errorlevel!==0 (
     set "STATUS=Enabled"
+    echo Startup status : !ESC![32mEnabled!ESC![0m
 ) else (
     set "STATUS=Disabled"
+    echo Startup status : !ESC![31mDisabled!ESC![0m
 )
 
-echo Startup status : !STATUS!
 echo.
 
 :: Process status
 tasklist /FI "IMAGENAME eq %EXE%" | find /I "%EXE%" >nul
 if !errorlevel!==0 (
-    echo Process status : Running
+    echo Process status : !ESC![32mRunning!ESC![0m
 ) else (
-    echo Process status : Not running
+    echo Process status : !ESC![31mNot running!ESC![0m
 )
 
 echo.
@@ -182,6 +186,7 @@ goto menu
 
 
 :enable
+cls
 reg add "%REGKEY%" ^
 /v "%APPNAME%" ^
 /t REG_SZ ^
@@ -195,6 +200,7 @@ goto menu
 
 
 :disable
+cls
 reg delete "%REGKEY%" ^
 /v "%APPNAME%" ^
 /f >nul 2>&1
