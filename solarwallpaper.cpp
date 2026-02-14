@@ -231,55 +231,58 @@ int getZone(double angle)
 // ================= 下次切换时间计算 =================
 //
 
-wstring calculateNextSwitchTime()
+wstring calculateNextSwitchTime(time_t* testTimePtr = NULL, bool testMode = false)
 {
-    time_t now = time(NULL);
+    time_t now = testTimePtr ? *testTimePtr : time(NULL);
     tm local;
     localtime_s(&local, &now);
     
-    double currentAngle = getSolarAltitude();
+    double currentAngle = getSolarAltitude(&now);
     int currentZone = getZone(currentAngle);
     
-    // 确定下一个区域边界的高度角阈值
+    // 确定下一个阈值
     double nextThreshold = 0;
     bool isIncreasing = false;
     
     // 判断太阳高度角是在上升还是下降
     tm testTime = local;
     testTime.tm_min += 10;
-    time_t testNow = mktime(&testTime);
-    double testAngle = getSolarAltitude(&testNow);
+    time_t testNowTemp = mktime(&testTime);
+    double testAngle = getSolarAltitude(&testNowTemp);
     isIncreasing = (testAngle > currentAngle);
     
     // 根据当前区域确定下一个阈值
     switch (currentZone)
     {
-    case 1: // 日出/日落
-        if (isIncreasing) 
-            nextThreshold = THRESHOLD_MORNING; // 上升到早晨
-        else 
-            nextThreshold = THRESHOLD_NIGHT; // 下降到夜间
+    case 1:
+        if (isIncreasing) nextThreshold = THRESHOLD_MORNING;
+        else nextThreshold = THRESHOLD_NIGHT;
         break;
-    case 2: // 早晨
-        nextThreshold = THRESHOLD_DAY; // 上升到白天
+    case 2:
+        if (isIncreasing) nextThreshold = THRESHOLD_MORNING;
+        else nextThreshold = THRESHOLD_SUNRISE;
         break;
-    case 3: // 白天
-        nextThreshold = THRESHOLD_DAY; // 下降到白天（中午后）
+    case 3:
+        if (isIncreasing) nextThreshold = THRESHOLD_DAY;
+        else nextThreshold = THRESHOLD_MORNING;
         break;
-    case 4: // 中午
-        nextThreshold = THRESHOLD_DAY; // 下降到白天
+    case 4:
+        nextThreshold = THRESHOLD_DAY;
         break;
-    case 5: // 夜间
-        nextThreshold = THRESHOLD_SUNRISE; // 上升到日出
+    case 5:
+        // 晚上：太阳高度角 <= THRESHOLD_NIGHT，下一次切换是达到THRESHOLD_NIGHT
+        nextThreshold = THRESHOLD_NIGHT;
         break;
     }
     
-    // 模拟时间流逝，寻找边界时间
+    // 以10分钟为步长遍历，寻找分界线
     tm searchTime = local;
     time_t searchNow = now;
     
-    // 最大搜索范围：7天，足够覆盖任何可能的情况
-    for (int i = 0; i < 1008; i++) // 1008个10分钟间隔 = 7天
+    // 对于zone 5，如果当前太阳高度角 <= THRESHOLD_NIGHT，需要找到太阳从最低点上升到THRESHOLD_NIGHT的时间
+    bool zone5SpecialCase = (currentZone == 5 && currentAngle <= THRESHOLD_NIGHT);
+    
+    for (int i = 0; i < 288; i++) // 48小时
     {
         searchTime.tm_min += 10;
         searchNow = mktime(&searchTime);
@@ -287,72 +290,108 @@ wstring calculateNextSwitchTime()
         
         double searchAngle = getSolarAltitude(&searchNow);
         
-        // 特殊处理夜间：寻找太阳上升到THRESHOLD_SUNRISE的时间
-        if (currentZone == 5)
+        // 检查是否达到阈值
+        bool reachedThreshold = false;
+        if (zone5SpecialCase)
         {
-            if (searchAngle >= nextThreshold) // 太阳上升到日出阈值
+            // Zone 5 特殊情况：需要找到太阳从最低点上升到THRESHOLD_NIGHT的时间
+            if (searchAngle >= THRESHOLD_NIGHT)
             {
-                // 找到大致范围后，缩小到分钟级精度
-                tm preciseTime = searchTime;
-                preciseTime.tm_min -= 10;
-                time_t preciseNow = mktime(&preciseTime);
-                
-                for (int j = 0; j < 10; j++)
-                {
-                    preciseTime.tm_min += 1;
-                    preciseNow = mktime(&preciseTime);
-                    localtime_s(&preciseTime, &preciseNow);
-                    
-                    double preciseAngle = getSolarAltitude(&preciseNow);
-                    
-                    if (preciseAngle >= nextThreshold)
-                    {
-                        wchar_t timeStr[32];
-                        swprintf_s(
-                            timeStr, 
-                            L"%02d:%02d", 
-                            preciseTime.tm_hour, 
-                            preciseTime.tm_min
-                        );
-                        return timeStr;
-                    }
-                }
+                reachedThreshold = true;
             }
         }
         else
         {
-            // 其他时间段：根据变化趋势判断
+            // 正常情况
             if ((isIncreasing && searchAngle >= nextThreshold) || 
                 (!isIncreasing && searchAngle <= nextThreshold))
             {
-                // 找到大致范围后，缩小到分钟级精度
-                tm preciseTime = searchTime;
-                preciseTime.tm_min -= 10;
-                time_t preciseNow = mktime(&preciseTime);
+                reachedThreshold = true;
+            }
+        }
+        
+        if (reachedThreshold)
+        {
+            // 找到分界线，切换到1分钟精度进行详细搜索
+            tm preciseTime = searchTime;
+            preciseTime.tm_min -= 10;
+            time_t preciseNow = mktime(&preciseTime);
+            
+            for (int j = 0; j < 10; j++)
+            {
+                preciseTime.tm_min += 1;
+                preciseNow = mktime(&preciseTime);
+                localtime_s(&preciseTime, &preciseNow);
                 
-                for (int j = 0; j < 10; j++)
+                double preciseAngle = getSolarAltitude(&preciseNow);
+                
+                bool preciseReachedThreshold = false;
+                if (zone5SpecialCase)
                 {
-                    preciseTime.tm_min += 1;
-                    preciseNow = mktime(&preciseTime);
-                    localtime_s(&preciseTime, &preciseNow);
-                    
-                    double preciseAngle = getSolarAltitude(&preciseNow);
-                    
+                    // Zone 5 特殊情况
+                    if (preciseAngle >= THRESHOLD_NIGHT)
+                    {
+                        preciseReachedThreshold = true;
+                    }
+                }
+                else
+                {
+                    // 正常情况
                     if ((isIncreasing && preciseAngle >= nextThreshold) || 
                         (!isIncreasing && preciseAngle <= nextThreshold))
                     {
-                        wchar_t timeStr[32];
-                        swprintf_s(
-                            timeStr, 
-                            L"%02d:%02d", 
-                            preciseTime.tm_hour, 
-                            preciseTime.tm_min
-                        );
-                        return timeStr;
+                        preciseReachedThreshold = true;
                     }
+                }
+                
+                if (preciseReachedThreshold)
+                {
+                    // 找到精确时间
+                    wchar_t timeStr[32];
+                    swprintf_s(timeStr, L"%02d:%02d", preciseTime.tm_hour, preciseTime.tm_min);
+                    
+                    // 测试模式：显示详细信息
+                    if (testMode)
+                    {
+                        wchar_t testMsg[512];
+                        swprintf_s(testMsg, 512,
+                            L"Test Mode Result:\n\n"
+                            L"Input Time: %02d:%02d\n"
+                            L"Current Angle: %.2f°, Zone: %d\n"
+                            L"Next Threshold: %.2f°\n"
+                            L"Next Switch: %02d:%02d\n"
+                            L"Switch Angle: %.2f°\n"
+                            L"Search Steps: %d (10min) + %d (1min)",
+                            local.tm_hour, local.tm_min,
+                            currentAngle, currentZone,
+                            nextThreshold,
+                            preciseTime.tm_hour, preciseTime.tm_min,
+                            preciseAngle,
+                            i + 1, j + 1
+                        );
+                        MessageBoxW(NULL, testMsg, L"Test Mode", MB_OK);
+                    }
+                    
+                    return timeStr;
                 }
             }
         }
+    }
+    
+    if (testMode)
+    {
+        wchar_t testMsg[256];
+        swprintf_s(testMsg, 256,
+            L"Test Mode Result:\n\n"
+            L"Input Time: %02d:%02d\n"
+            L"Current Angle: %.2f°, Zone: %d\n"
+            L"Next Threshold: %.2f°\n"
+            L"Result: No switch today",
+            local.tm_hour, local.tm_min,
+            currentAngle, currentZone,
+            nextThreshold
+        );
+        MessageBoxW(NULL, testMsg, L"Test Mode", MB_OK);
     }
     
     return L"No switch today";
