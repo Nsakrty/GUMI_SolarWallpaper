@@ -282,6 +282,9 @@ wstring calculateNextSwitchTime(time_t* testTimePtr = NULL, bool testMode = fals
     // 对于zone 5，如果当前太阳高度角 <= THRESHOLD_NIGHT，需要找到太阳从最低点上升到THRESHOLD_NIGHT的时间
     bool zone5SpecialCase = (currentZone == 5 && currentAngle <= THRESHOLD_NIGHT);
     
+    // 对于zone 4，如果太阳高度角在上升，需要找到太阳从最高点下降到THRESHOLD_DAY的时间
+    bool zone4SpecialCase = (currentZone == 4 && isIncreasing);
+    
     for (int i = 0; i < 288; i++) // 48小时
     {
         searchTime.tm_min += 10;
@@ -298,6 +301,19 @@ wstring calculateNextSwitchTime(time_t* testTimePtr = NULL, bool testMode = fals
             if (searchAngle >= THRESHOLD_NIGHT)
             {
                 reachedThreshold = true;
+            }
+        }
+        else if (zone4SpecialCase)
+        {
+            // Zone 4 特殊情况：需要找到太阳从最高点下降到THRESHOLD_DAY的时间
+            // 先检查太阳高度角是否开始下降
+            if (searchAngle < currentAngle)
+            {
+                // 太阳高度角开始下降，现在检查是否达到THRESHOLD_DAY
+                if (searchAngle <= THRESHOLD_DAY)
+                {
+                    reachedThreshold = true;
+                }
             }
         }
         else
@@ -332,6 +348,19 @@ wstring calculateNextSwitchTime(time_t* testTimePtr = NULL, bool testMode = fals
                     if (preciseAngle >= THRESHOLD_NIGHT)
                     {
                         preciseReachedThreshold = true;
+                    }
+                }
+                else if (zone4SpecialCase)
+                {
+                    // Zone 4 特殊情况：需要找到太阳从最高点下降到THRESHOLD_DAY的时间
+                    // 先检查太阳高度角是否开始下降
+                    if (preciseAngle < currentAngle)
+                    {
+                        // 太阳高度角开始下降，现在检查是否达到THRESHOLD_DAY
+                        if (preciseAngle <= THRESHOLD_DAY)
+                        {
+                            preciseReachedThreshold = true;
+                        }
                     }
                 }
                 else
