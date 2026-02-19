@@ -15,6 +15,7 @@ Designed as a lightweight, standalone background utility with system tray integr
 • System tray icon with live status display
 • Displays current solar altitude (two decimal precision)
 • Displays current wallpaper state
+• Displays next scheduled switch time
 • Automatic location detection (IP-based)
 • Manual location configuration support
 • Startup manager included
@@ -23,6 +24,8 @@ Designed as a lightweight, standalone background utility with system tray integr
 • No telemetry
 • No background services
 • No installation required (portable)
+• Configurable thresholds
+• Real-time config reloading
 
 ---
 
@@ -65,10 +68,11 @@ GUMI_SolarWallpaper/
 ├─ icon.ico
 │
 └─ wallpaper/
-   ├─ 1.jpg
-   ├─ 2.jpg
-   ├─ 3.jpg
-   └─ 4.jpg
+   ├─ night.JPG
+   ├─ sunrise_sunset.JPG
+   ├─ morning.JPG
+   ├─ day.JPG
+   └─ noon.JPG
 ```
 
 No installation required.
@@ -136,6 +140,7 @@ Tray icon displays:
 
 • Current solar altitude
 • Current wallpaper state
+• Next scheduled switch time
 
 Right-click tray icon:
 
@@ -172,10 +177,16 @@ Right-click tray icon → Exit
 
 config.ini
 
-```
+```ini
 [location]
 lat=39.9042
 lon=116.4074
+
+[thresholds]
+night=-12
+sunrise=10
+morning=35
+day=50
 ```
 
 Precision recommendation:
@@ -256,6 +267,36 @@ Nsakrty
 
 ---
 
+## Version History
+
+### v1.1.0 (Latest)
+- ✅ 5 wallpaper zones (Night, Sunrise/Sunset, Morning/Evening, Daytime, Noon)
+- ✅ Configurable thresholds in config.ini
+- ✅ Next switch time prediction
+- ✅ Enhanced tray tooltip with detailed information
+- ✅ Real-time config reloading
+- ✅ Descriptive wallpaper filenames
+- ✅ Improved solar calculation accuracy
+- ✅ Optimized performance and stability
+
+### v1.0.1
+- ✅ Fixed tray icon stability issues
+- ✅ Fixed Unicode build compatibility
+- ✅ Fixed MinGW compilation errors
+- ✅ Improved general stability
+- ✅ Improved startup reliability
+
+### v1.0.0
+- ✅ First stable release
+- ✅ Real-time solar altitude calculation
+- ✅ Automatic wallpaper switching
+- ✅ System tray integration
+- ✅ Startup manager included
+- ✅ Manual location configuration
+- ✅ Automatic location via IP
+
+---
+
 # 中文说明
 
 基于太阳高度角的 Windows 动态壁纸切换工具。
@@ -273,6 +314,7 @@ Nsakrty
 • 托盘图标实时状态显示
 • 显示太阳高度角（两位小数）
 • 显示当前壁纸状态
+• 显示下次切换时间
 • 支持自动定位（IP定位）
 • 支持手动输入经纬度
 • 自启动管理工具
@@ -281,6 +323,8 @@ Nsakrty
 • 无遥测
 • 无后台服务
 • 绿色便携软件
+• 可配置的阈值
+• 实时配置重载
 
 ---
 
@@ -380,6 +424,7 @@ startup.cmd
 
 • 当前太阳高度角
 • 当前壁纸状态
+• 下次切换时间
 
 右键菜单：
 
@@ -416,10 +461,16 @@ stop.cmd
 
 config.ini
 
-```
+```ini
 [location]
 lat=纬度
 lon=经度
+
+[thresholds]
+night=-12
+sunrise=10
+morning=35
+day=50
 ```
 
 推荐精度：
@@ -478,4 +529,33 @@ SpaceEngine
 ## 作者
 
 Nsakrty
-"# GUMI_SolarWallpaper" 
+
+---
+
+## 版本历史
+
+### v1.1.0（最新）
+- ✅ 5个壁纸区域（夜晚、日出/日落、早晨/傍晚、白天、正午）
+- ✅ 配置文件中可自定义阈值
+- ✅ 下次切换时间预测
+- ✅ 增强的托盘提示信息
+- ✅ 实时配置重载
+- ✅ 描述性壁纸文件名
+- ✅ 提高太阳高度角计算精度
+- ✅ 优化性能和稳定性
+
+### v1.0.1
+- ✅ 修复托盘图标稳定性问题
+- ✅ 修复 Unicode 编译兼容性
+- ✅ 修复 MinGW 编译错误
+- ✅ 提高整体稳定性
+- ✅ 提高启动可靠性
+
+### v1.0.0
+- ✅ 首个稳定版本
+- ✅ 实时太阳高度角计算
+- ✅ 自动壁纸切换
+- ✅ 系统托盘集成
+- ✅ 自启动管理工具
+- ✅ 手动位置配置
+- ✅ 基于 IP 的自动定位

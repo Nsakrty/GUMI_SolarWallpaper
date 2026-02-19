@@ -255,7 +255,7 @@ wstring calculateNextSwitchTime(time_t* testTimePtr = NULL, bool testMode = fals
     switch (currentZone)
     {
     case 1:
-        if (isIncreasing) nextThreshold = THRESHOLD_MORNING;
+        if (isIncreasing) nextThreshold = THRESHOLD_SUNRISE;
         else nextThreshold = THRESHOLD_NIGHT;
         break;
     case 2:
