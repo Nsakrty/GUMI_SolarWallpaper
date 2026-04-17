@@ -9,6 +9,7 @@ g++ solarwallpaper.cpp icon_res.o -o solarwallpaper.exe ^
 -DUNICODE ^
 -D_UNICODE ^
 -O2 ^
--s
+-s ^
+-lwininet
 
 start solarwallpaper.exe

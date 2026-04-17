@@ -6,6 +6,9 @@
 
 #include <windows.h>
 #include <shellapi.h>
+#include <wininet.h>
+
+#pragma comment(lib, "wininet.lib")
 
 using namespace std;
 
@@ -34,6 +37,9 @@ double THRESHOLD_MORNING = 35;
 double THRESHOLD_DAY = 50;
 wstring WALLPAPERS[6];
 bool running = true;
+int weathercode = 0;
+int lastWeathercode = 0;
+bool weatherUpdated = false;
 
 //
 // ================= 路径工具 =================
@@ -89,6 +95,174 @@ bool loadConfig()
     if (THRESHOLD_DAY == 0) THRESHOLD_DAY = 50;
     
     return !(LAT == 0 && LON == 0);
+}
+
+//
+// ================= 日志功能 =================
+//
+
+void writeLog(const string& message)
+{
+    time_t now = time(NULL);
+    tm local;
+    localtime_s(&local, &now);
+    
+    char timeStr[32];
+    strftime(timeStr, 32, "%Y-%m-%d %H:%M:%S", &local);
+    
+    FILE* logFile = fopen("weather_debug.log", "a");
+    if (logFile) {
+        fprintf(logFile, "[%s] %s\n", timeStr, message.c_str());
+        fclose(logFile);
+    }
+}
+
+//
+// ================= 网络请求 =================
+//
+
+string httpGet(const string& url)
+{
+    writeLog("Requesting: " + url);
+    
+    HINTERNET hInternet = InternetOpenA("SolarWallpaper", INTERNET_OPEN_TYPE_DIRECT, NULL, NULL, 0);
+    if (!hInternet) {
+        writeLog("InternetOpen failed");
+        return "";
+    }
+    
+    // 添加INTERNET_FLAG_SECURE标志以支持HTTPS
+    HINTERNET hConnect = InternetOpenUrlA(hInternet, url.c_str(), NULL, 0, INTERNET_FLAG_RELOAD | INTERNET_FLAG_SECURE, 0);
+    if (!hConnect) {
+        writeLog("InternetOpenUrl failed");
+        InternetCloseHandle(hInternet);
+        return "";
+    }
+    
+    char buffer[4096];
+    DWORD bytesRead;
+    string response;
+    
+    while (InternetReadFile(hConnect, buffer, sizeof(buffer), &bytesRead) && bytesRead > 0) {
+        response.append(buffer, bytesRead);
+    }
+    
+    writeLog("Response: " + response);
+    
+    InternetCloseHandle(hConnect);
+    InternetCloseHandle(hInternet);
+    
+    return response;
+}
+
+//
+// ================= JSON解析 =================
+//
+
+int parseWeatherCode(const string& json)
+{
+    // 查找第二个current_weather（跳过current_weather_units）
+    size_t firstPos = json.find("current_weather");
+    if (firstPos == string::npos) {
+        writeLog("current_weather not found");
+        return 0;
+    }
+    
+    size_t secondPos = json.find("current_weather", firstPos + 1);
+    if (secondPos == string::npos) {
+        writeLog("second current_weather not found");
+        return 0;
+    }
+    
+    // 找到current_weather对象的开始
+    size_t objStart = json.find('{', secondPos);
+    if (objStart == string::npos) {
+        writeLog("current_weather object not found");
+        return 0;
+    }
+    
+    // 在current_weather对象内查找weathercode
+    size_t weathercodePos = json.find("weathercode", objStart);
+    if (weathercodePos == string::npos) {
+        writeLog("weathercode not found in current_weather");
+        return 0;
+    }
+    
+    // 跳过weathercode: 
+    size_t colonPos = json.find(':', weathercodePos);
+    if (colonPos == string::npos) {
+        writeLog("colon not found");
+        return 0;
+    }
+    
+    colonPos++;
+    // 跳过空格
+    while (colonPos < json.size() && (json[colonPos] == ' ' || json[colonPos] == '\t' || json[colonPos] == '\n' || json[colonPos] == '\r')) {
+        colonPos++;
+    }
+    
+    // 读取数字
+    string codeStr;
+    while (colonPos < json.size() && isdigit(json[colonPos])) {
+        codeStr += json[colonPos];
+        colonPos++;
+    }
+    
+    if (codeStr.empty()) {
+        writeLog("empty weathercode");
+        return 0;
+    }
+    
+    int code = stoi(codeStr);
+    writeLog("Parsed weathercode: " + to_string(code));
+    return code;
+}
+
+//
+// ================= 天气API调用 =================
+//
+
+string getWeatherDescription(int code)
+{
+    switch (code) {
+    case 0: return "Clear";
+    case 1: return "Mostly Clear";
+    case 2: return "Partly Cloudy";
+    case 3: return "Cloudy";
+    case 45: case 48: return "Fog";
+    case 51: case 53: case 55: case 56: case 57: case 61: case 63: case 65: case 66: case 67: return "Rain";
+    case 71: case 73: case 75: case 77: return "Snow";
+    case 80: case 81: case 82: case 85: case 86: case 95: case 96: case 99: return "Thunderstorm";
+    default: return "";
+    }
+}
+
+void updateWeather()
+{
+    if (LAT == 0 || LON == 0) {
+        writeLog("Invalid location: lat=" + to_string(LAT) + ", lon=" + to_string(LON));
+        return;
+    }
+    
+    char url[256];
+    sprintf_s(url, "https://api.open-meteo.com/v1/forecast?latitude=%.3f&longitude=%.3f&current_weather=true", LAT, LON);
+    
+    string response = httpGet(url);
+    if (!response.empty()) {
+        int newCode = parseWeatherCode(response);
+        writeLog("Parsed weathercode: " + to_string(newCode));
+        // 允许weathercode为0（晴天）
+        if (newCode != 0 || (newCode == 0 && weathercode != 0)) {
+            writeLog("Updating weathercode from " + to_string(weathercode) + " to " + to_string(newCode));
+            lastWeathercode = weathercode;
+            weathercode = newCode;
+            weatherUpdated = true;
+        } else {
+            writeLog("Weathercode unchanged: " + to_string(newCode));
+        }
+    } else {
+        writeLog("Empty response");
+    }
 }
 
 //
@@ -435,16 +609,54 @@ void addTrayIcon()
     Shell_NotifyIcon(NIM_ADD, &nid);
 }
 
+wstring stringToWstring(const string& str)
+{
+    int len = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, NULL, 0);
+    wchar_t* buffer = new wchar_t[len];
+    MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, buffer, len);
+    wstring wstr(buffer);
+    delete[] buffer;
+    return wstr;
+}
+
 void updateTray(double angle, const wstring& wallpaper, const wstring& nextSwitchTime)
 {
     wchar_t text[128];
-    swprintf_s(
-        text,
-        L"Solar Altitude: %.2f°\nWallpaper: %s\nNext Switch: %s",
-        angle,
-        getFilename(wallpaper).c_str(),
-        nextSwitchTime.c_str()
-    );
+    string weatherDesc = getWeatherDescription(weathercode);
+    
+    if (!weatherDesc.empty()) {
+        wstring wWeatherDesc = stringToWstring(weatherDesc);
+        if (weatherUpdated) {
+            swprintf_s(
+                text,
+                L"Solar Altitude: %.2f°\nWallpaper: %s\nNext Switch: %s\nWeather:%s(%d)",
+                angle,
+                getFilename(wallpaper).c_str(),
+                nextSwitchTime.c_str(),
+                wWeatherDesc.c_str(),
+                weathercode
+            );
+        } else {
+            swprintf_s(
+                text,
+                L"Solar Altitude: %.2f°\nWallpaper: %s\nNext Switch: %s\nWeather:%s(%d)(last)",
+                angle,
+                getFilename(wallpaper).c_str(),
+                nextSwitchTime.c_str(),
+                wWeatherDesc.c_str(),
+                weathercode
+            );
+        }
+    } else {
+        swprintf_s(
+            text,
+            L"Solar Altitude: %.2f°\nWallpaper: %s\nNext Switch: %s",
+            angle,
+            getFilename(wallpaper).c_str(),
+            nextSwitchTime.c_str()
+        );
+    }
+    
     wcscpy_s(nid.szTip, text);
     Shell_NotifyIcon(NIM_MODIFY, &nid);
 }
@@ -571,8 +783,26 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int)
     thread worker([&]()
     {
         int lastZone = -1;
+        int currentMinute = -1;
+        
+        // 程序启动时立即调用一次天气API
+        weatherUpdated = false;
+        updateWeather();
+        
         while (running)
         {
+            time_t now = time(NULL);
+            tm local;
+            localtime_s(&local, &now);
+            
+            // 每10分钟更新一次天气
+            if (local.tm_min % 10 == 0 && local.tm_min != currentMinute)
+            {
+                weatherUpdated = false;
+                updateWeather();
+                currentMinute = local.tm_min;
+            }
+            
             double angle = getSolarAltitude();
             int zone = getZone(angle);
             wstring target = WALLPAPERS[zone];
