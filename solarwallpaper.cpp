@@ -401,6 +401,37 @@ int getZone(double angle)
     return 4;
 }
 
+bool isCloudyWeather(int code)
+{
+    return code == 2 || code == 3;
+}
+
+wstring getWeatherWallpaperPath(int zone, int weatherCode)
+{
+    wstring baseDir = getExeDir();
+    wstring defaultPath = WALLPAPERS[zone];
+
+    if (!isCloudyWeather(weatherCode)) {
+        return defaultPath;
+    }
+
+    wstring weatherSuffix = L"_cloudy";
+    size_t dotPos = defaultPath.rfind(L'.');
+    if (dotPos == wstring::npos) {
+        return defaultPath;
+    }
+
+    wstring weatherPath = defaultPath.substr(0, dotPos) + weatherSuffix + defaultPath.substr(dotPos);
+
+    FILE* f = _wfopen(weatherPath.c_str(), L"rb");
+    if (f) {
+        fclose(f);
+        return weatherPath;
+    }
+
+    return defaultPath;
+}
+
 //
 // ================= 下次切换时间计算 =================
 //
@@ -805,9 +836,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int)
             
             double angle = getSolarAltitude();
             int zone = getZone(angle);
-            wstring target = WALLPAPERS[zone];
+            wstring target = getWeatherWallpaperPath(zone, weathercode);
 
-            if (zone != lastZone)
+            if (zone != lastZone || weatherUpdated)
             {
                 if (getCurrentWallpaper() != target)
                     setWallpaper(target.c_str());
