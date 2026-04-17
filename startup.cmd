@@ -85,14 +85,16 @@ echo ================================
 echo.
 echo 1. Manual input
 echo 2. Auto detect (IP)
-echo 3. Back
+echo 3. GPS detect
+echo 4. Back
 echo.
 
 set /p locchoice=Select option:
 
 if "%locchoice%"=="1" goto manual
 if "%locchoice%"=="2" goto autoip
-if "%locchoice%"=="3" goto menu
+if "%locchoice%"=="3" goto gpsdetect
+if "%locchoice%"=="4" goto menu
 
 goto setloc
 
@@ -167,6 +169,67 @@ pause
 
 goto saveloc
 
+
+:gpsdetect
+cls
+echo Detecting location via GPS...
+echo.
+
+:: 尝试获取GPS位置，最多尝试3次
+set "attempt=0"
+set "valid=false"
+
+:gps_retry
+set /a "attempt+=1"
+
+if !attempt! gtr 3 goto gps_fail
+
+echo Attempt !attempt! of 3...
+
+:: 使用PowerShell调用Windows GPS API
+PowerShell -ExecutionPolicy Bypass -Command "$ErrorActionPreference = 'SilentlyContinue'; try { Add-Type -AssemblyName System.Device; $locator = New-Object System.Device.Location.GeoCoordinateWatcher; $locator.Start(); $timeout = 10; $startTime = Get-Date; while ($locator.Status -ne 'Ready' -and ((Get-Date) - $startTime).TotalSeconds -lt $timeout) { Start-Sleep -Milliseconds 500 }; if ($locator.Status -eq 'Ready') { $position = $locator.Position; if ($position.Location.IsUnknown -eq $false) { $lat = $position.Location.Latitude; $lon = $position.Location.Longitude; Write-Output \"$lat,$lon\" } else { Write-Output \"0,0\" } } else { Write-Output \"0,0\" }; $locator.Stop() } catch { Write-Output \"0,0\" }" > temp_gps.txt
+
+:: 读取GPS结果
+if not exist temp_gps.txt (
+    echo Failed to get GPS data.
+    goto gps_retry
+)
+
+set /p gps_result=<temp_gps.txt
+del temp_gps.txt
+
+:: 解析结果
+for /f "tokens=1,2 delims=," %%A in ("!gps_result!") do (
+    set lat=%%A
+    set lon=%%B
+)
+
+:: 检查是否为有效值
+if "!lat!"=="0" if "!lon!"=="0" goto gps_retry
+if "!lat!"=="NaN" if "!lon!"=="NaN" goto gps_retry
+
+:: 检查是否为数字
+set "valid=true"
+for /f "delims=.0123456789" %%i in ("!lat!") do set "valid=false"
+for /f "delims=.0123456789" %%i in ("!lon!") do set "valid=false"
+
+if "!valid!"=="false" goto gps_retry
+
+:: 显示获取到的位置
+echo GPS location detected:
+echo Latitude  : !lat!
+echo Longitude : !lon!
+echo.
+pause
+goto saveloc
+
+:gps_fail
+cls
+echo Failed to get valid GPS location after 3 attempts.
+echo config.ini will not be updated.
+echo.
+pause
+goto setloc
 
 :saveloc
 (

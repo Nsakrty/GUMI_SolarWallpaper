@@ -1,5 +1,6 @@
 # Trae IDE files
 .trae/
+weather_debug.log
 
 # Configuration files
 config.ini
