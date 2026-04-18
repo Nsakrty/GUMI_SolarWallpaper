@@ -10,22 +10,26 @@ Designed as a lightweight, standalone background utility with system tray integr
 
 ## Features
 
-• Real-time solar altitude calculation
-• Automatic wallpaper switching based on solar angle
-• System tray icon with live status display
-• Displays current solar altitude (two decimal precision)
-• Displays current wallpaper state
-• Displays next scheduled switch time
-• Automatic location detection (IP-based)
-• Manual location configuration support
-• Startup manager included
-• Extremely lightweight (< 1 MB RAM typical)
-• No internet required for runtime
-• No telemetry
-• No background services
-• No installation required (portable)
-• Configurable thresholds
-• Real-time config reloading
+- Real-time solar altitude calculation  
+- Automatic wallpaper switching based on solar angle  
+- Weather-based wallpaper adaptation  
+- System tray icon with live status display  
+- Displays current solar altitude (two decimal precision)
+- Displays current wallpaper state
+- Displays next scheduled switch time
+- Displays current weather condition
+- Automatic location detection (IP-based)
+- GPS location detection support
+- Manual location configuration support
+- Startup manager included
+- Extremely lightweight (< 1 MB RAM typical)
+- Internet required for weather updates
+- No telemetry
+- No background services
+- No installation required (portable)
+- Configurable thresholds
+- Real-time config reloading
+- Enhanced reload config functionality
 
 ---
 
@@ -33,10 +37,10 @@ Designed as a lightweight, standalone background utility with system tray integr
 
 The program calculates solar altitude using:
 
-• Your configured latitude
-• Your configured longitude
-• Current system time
-• Solar correction table
+- Your configured latitude
+- Your configured longitude
+- Current system time
+- Solar correction table
 
 Then selects wallpaper based on altitude range:
 
@@ -48,7 +52,13 @@ Altitude < -12°     Night
 50° ~ 90°         Noon
 ```
 
-Wallpaper switching occurs automatically when entering a new zone.
+Additionally, the program fetches real-time weather data from Open-Meteo API and adapts wallpaper based on weather conditions:
+
+- Clear weather → Standard wallpaper
+- Cloudy weather → Cloudy variant wallpaper
+- Other weather conditions → Corresponding weather-specific wallpapers (if available)
+
+Wallpaper switching occurs automatically when entering a new zone or when weather conditions change.
 
 ---
 
@@ -69,10 +79,15 @@ GUMI_SolarWallpaper/
 │
 └─ wallpaper/
    ├─ night.JPG
+   ├─ night_cloudy.jpg
    ├─ sunrise_sunset.JPG
-   ├─ morning.JPG
+   ├─ sunrise_sunset_cloudy.JPG
+   ├─ morning.jpg
+   ├─ morning_cloudy.jpg
    ├─ day.JPG
-   └─ noon.JPG
+   ├─ day_cloudy.jpg
+   ├─ noon.JPG
+   └─ noon_cloudy.JPG
 ```
 
 No installation required.
@@ -97,8 +112,9 @@ Then choose:
 
 ```
 1. Manual input
-or
 2. Auto detect (IP)
+or
+3. GPS detect
 ```
 
 Location will be saved automatically.
@@ -121,7 +137,9 @@ Available options:
 3. Disable startup
 4. Start now
 5. Stop now
-6. Exit
+6. Restart
+7. Recode Program
+8. Exit
 ```
 
 Displays:
@@ -138,14 +156,15 @@ Current configured location
 
 Tray icon displays:
 
-• Current solar altitude
-• Current wallpaper state
-• Next scheduled switch time
+- Current solar altitude
+- Current wallpaper state
+- Next scheduled switch time
 
 Right-click tray icon:
 
 ```
-Reload config
+Reload config (now with immediate weather and wallpaper update)
+Open startup (opens startup.cmd for configuration)
 Exit
 ```
 
@@ -218,11 +237,13 @@ No administrator privileges required
 
 SolarWallpaper:
 
-• Does NOT collect any data
-• Does NOT track user activity
-• Does NOT connect to internet during runtime
+- Does NOT collect any user data
+- Does NOT track user activity
+- Connects to internet only for:
+  - Weather updates (Open-Meteo API)
+  - IP-based location detection (only during setup when explicitly selected)
 
-IP detection is used ONLY during setup when user explicitly selects auto-detect.
+All weather data is fetched directly from Open-Meteo API and is not stored or logged.
 
 ---
 
@@ -234,9 +255,9 @@ Some images are generated using AI tools. Original author permissions may not ye
 
 This software is:
 
-• Completely free
-• Non-commercial
-• Created for educational and technical practice
+- Completely free
+- Non-commercial
+- Created for educational and technical practice
 
 If any infringement exists, please contact for removal:
 
@@ -269,7 +290,20 @@ Nsakrty
 
 ## Version History
 
-### v1.1.0 (Latest)
+### v1.2.0 (Latest)
+- ✅ Weather-based wallpaper adaptation
+- ✅ Real-time weather data from Open-Meteo API
+- ✅ Cloudy weather wallpaper variants
+- ✅ Enhanced reload config functionality (now updates weather and wallpaper immediately)
+- ✅ New tray menu option: "Open startup" (opens startup.cmd)
+- ✅ GPS location detection support
+- ✅ Restart option in startup manager
+- ✅ Recode Program option in startup manager
+- ✅ Weather condition display in tray tooltip
+- ✅ Improved weather code parsing
+- ✅ Optimized network requests with HTTPS support
+
+### v1.1.0
 - ✅ 5 wallpaper zones (Night, Sunrise/Sunset, Morning/Evening, Daytime, Noon)
 - ✅ Configurable thresholds in config.ini
 - ✅ Next switch time prediction
@@ -309,22 +343,26 @@ Nsakrty
 
 ## 功能
 
-• 实时太阳高度角计算
-• 自动切换壁纸
-• 托盘图标实时状态显示
-• 显示太阳高度角（两位小数）
-• 显示当前壁纸状态
-• 显示下次切换时间
-• 支持自动定位（IP定位）
-• 支持手动输入经纬度
-• 自启动管理工具
-• 极低内存占用（约 < 1 MB）
-• 运行时无需联网
-• 无遥测
-• 无后台服务
-• 绿色便携软件
-• 可配置的阈值
-• 实时配置重载
+- 实时太阳高度角计算
+- 自动切换壁纸
+- 基于天气的壁纸适配
+- 托盘图标实时状态显示
+- 显示太阳高度角（两位小数）
+- 显示当前壁纸状态
+- 显示下次切换时间
+- 显示当前天气状况
+- 支持自动定位（IP定位）
+- 支持GPS定位
+- 支持手动输入经纬度
+- 自启动管理工具
+- 极低内存占用（约 < 1 MB）
+- 天气更新需要联网
+- 无遥测
+- 无后台服务
+- 绿色便携软件
+- 可配置的阈值
+- 实时配置重载
+- 增强的配置重载功能
 
 ---
 
@@ -332,10 +370,10 @@ Nsakrty
 
 程序使用：
 
-• 纬度
-• 经度
-• 当前时间
-• 太阳修正表
+- 纬度
+- 经度
+- 当前时间
+- 太阳修正表
 
 计算太阳高度角，并根据区间切换壁纸：
 
@@ -347,7 +385,13 @@ Nsakrty
 50° ~ 90°         正午
 ```
 
-进入新区间时自动切换壁纸。
+此外，程序还会从 Open-Meteo API 获取实时天气数据，并根据天气状况适配壁纸：
+
+- 晴朗天气 → 标准壁纸
+- 多云天气 → 多云变体壁纸
+- 其他天气状况 → 相应的天气专用壁纸（如果可用）
+
+当进入新区间或天气状况变化时，会自动切换壁纸。
 
 ---
 
@@ -381,8 +425,9 @@ startup.cmd
 
 ```
 1 手动输入
-或
 2 自动定位（IP）
+或
+3 GPS定位
 ```
 
 系统会自动保存配置。
@@ -405,6 +450,8 @@ startup.cmd
 禁用开机启动
 立即启动程序
 立即停止程序
+重启程序
+重新编译程序
 查看当前状态
 ```
 
@@ -422,14 +469,15 @@ startup.cmd
 
 托盘显示：
 
-• 当前太阳高度角
-• 当前壁纸状态
-• 下次切换时间
+- 当前太阳高度角
+- 当前壁纸状态
+- 下次切换时间
 
 右键菜单：
 
 ```
-Reload config
+Reload config（现在会立即更新天气和壁纸）
+Open startup（打开 startup.cmd 进行配置）
 Exit
 ```
 
@@ -485,11 +533,13 @@ day=50
 
 本软件：
 
-• 不收集任何数据
-• 不追踪用户行为
-• 不在运行时联网
+- 不收集任何用户数据
+- 不追踪用户行为
+- 仅在以下情况下联网：
+  - 天气更新（Open-Meteo API）
+  - IP-based 定位检测（仅在用户明确选择时使用）
 
-自动定位仅在用户主动选择时使用。
+所有天气数据直接从 Open-Meteo API 获取，不存储或记录。
 
 ---
 
@@ -499,9 +549,9 @@ day=50
 
 本软件：
 
-• 完全免费
-• 非商业用途
-• 仅用于学习与技术实践
+- 完全免费
+- 非商业用途
+- 仅用于学习与技术实践
 
 如有侵权，请联系删除：
 
@@ -534,7 +584,20 @@ Nsakrty
 
 ## 版本历史
 
-### v1.1.0（最新）
+### v1.2.0（最新）
+- ✅ 基于天气的壁纸适配
+- ✅ 从 Open-Meteo API 获取实时天气数据
+- ✅ 多云天气壁纸变体
+- ✅ 增强的配置重载功能（现在会立即更新天气和壁纸）
+- ✅ 新的托盘菜单选项："Open startup"（打开 startup.cmd）
+- ✅ GPS 定位支持
+- ✅ 启动管理器中的重启选项
+- ✅ 启动管理器中的重新编译程序选项
+- ✅ 托盘提示中显示天气状况
+- ✅ 改进的天气代码解析
+- ✅ 优化的网络请求，支持 HTTPS
+
+### v1.1.0
 - ✅ 5个壁纸区域（夜晚、日出/日落、早晨/傍晚、白天、正午）
 - ✅ 配置文件中可自定义阈值
 - ✅ 下次切换时间预测

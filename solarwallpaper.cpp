@@ -22,6 +22,7 @@ const double PI = 3.14159265358979323846;
 #define WM_TRAYICON (WM_USER + 1)
 #define ID_TRAY_EXIT   1001
 #define ID_TRAY_RELOAD 1002
+#define ID_TRAY_STARTUP 1003
 
 //
 // ================= 全局变量 =================
@@ -732,6 +733,7 @@ void ShowTrayMenu(HWND hwnd)
     HMENU menu = CreatePopupMenu();
 
     AppendMenuW(menu, MF_STRING, ID_TRAY_RELOAD, L"Reload config");
+    AppendMenuW(menu, MF_STRING, ID_TRAY_STARTUP, L"Open startup");
     AppendMenuW(menu, MF_STRING, ID_TRAY_EXIT,   L"Exit");
 
     SetForegroundWindow(hwnd);
@@ -776,6 +778,21 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         if (LOWORD(wParam) == ID_TRAY_RELOAD)
         {
             loadConfig();
+            // 重新加载配置后立即更新天气和壁纸
+            updateWeather();
+            double angle = getSolarAltitude();
+            int zone = getZone(angle);
+            wstring target = getWeatherWallpaperPath(zone, weathercode);
+            setWallpaper(target.c_str());
+            wstring nextSwitchTime = calculateNextSwitchTime();
+            updateTray(angle, target, nextSwitchTime);
+        }
+        if (LOWORD(wParam) == ID_TRAY_STARTUP)
+        {
+            // 打开 startup.cmd 文件
+            wstring exeDir = getExeDir();
+            wstring startupPath = exeDir + L"\\startup.cmd";
+            ShellExecuteW(NULL, L"open", startupPath.c_str(), NULL, exeDir.c_str(), SW_SHOWNORMAL);
         }
         break;
 
