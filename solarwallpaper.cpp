@@ -3,6 +3,7 @@
 #include <string>
 #include <thread>
 #include <chrono>
+#include <vector>
 
 #include <windows.h>
 #include <shellapi.h>
@@ -40,6 +41,23 @@ bool running = true;
 int weathercode = 0;
 int lastWeathercode = 0;
 bool weatherUpdated = false;
+
+// 天气-壁纸映射表
+struct WeatherWallpaperMap {
+    int weatherCode;          // 天气代码
+    int zone;                // 时段代码（-1 表示所有时段）
+    int targetZone;          // 目标时段代码（-1 表示使用原时段）
+    wstring wallpaperSuffix;  // 壁纸后缀
+};
+
+vector<WeatherWallpaperMap> weatherWallpaperMaps = {
+    // 特定映射
+    {3, 4, 3, L"_cloudy"},    // Cloudy + noon → day_cloudy.jpg (使用 day 时段的壁纸)
+    // 未来扩展
+    {51, -1, -1, L"_rain"},   // Rain + 所有时段 → {时段}_rain.JPG
+    {71, -1, -1, L"_snow"},   // Snow + 所有时段 → {时段}_snow.JPG
+    {45, -1, -1, L"_fog"},    // Fog + 所有时段 → {时段}_fog.JPG
+};
 
 //
 // ================= 路径工具 =================
@@ -408,27 +426,42 @@ bool isCloudyWeather(int code)
 
 wstring getWeatherWallpaperPath(int zone, int weatherCode)
 {
-    wstring baseDir = getExeDir();
     wstring defaultPath = WALLPAPERS[zone];
 
-    if (!isCloudyWeather(weatherCode)) {
-        return defaultPath;
+    // 1. 优先检查映射表
+    for (const auto& map : weatherWallpaperMaps) {
+        if (map.weatherCode == weatherCode && (map.zone == -1 || map.zone == zone)) {
+            // 确定使用的时段
+            int useZone = (map.targetZone == -1) ? zone : map.targetZone;
+            wstring basePath = WALLPAPERS[useZone];
+            
+            size_t dotPos = basePath.rfind(L'.');
+            if (dotPos != wstring::npos) {
+                wstring weatherPath = basePath.substr(0, dotPos) + map.wallpaperSuffix + basePath.substr(dotPos);
+                FILE* f = _wfopen(weatherPath.c_str(), L"rb");
+                if (f) {
+                    fclose(f);
+                    return weatherPath;
+                }
+            }
+        }
     }
 
-    wstring weatherSuffix = L"_cloudy";
-    size_t dotPos = defaultPath.rfind(L'.');
-    if (dotPos == wstring::npos) {
-        return defaultPath;
+    // 2. 回退到现有多云逻辑
+    if (isCloudyWeather(weatherCode)) {
+        wstring weatherSuffix = L"_cloudy";
+        size_t dotPos = defaultPath.rfind(L'.');
+        if (dotPos != wstring::npos) {
+            wstring weatherPath = defaultPath.substr(0, dotPos) + weatherSuffix + defaultPath.substr(dotPos);
+            FILE* f = _wfopen(weatherPath.c_str(), L"rb");
+            if (f) {
+                fclose(f);
+                return weatherPath;
+            }
+        }
     }
 
-    wstring weatherPath = defaultPath.substr(0, dotPos) + weatherSuffix + defaultPath.substr(dotPos);
-
-    FILE* f = _wfopen(weatherPath.c_str(), L"rb");
-    if (f) {
-        fclose(f);
-        return weatherPath;
-    }
-
+    // 3. 最终回退到默认壁纸
     return defaultPath;
 }
 
@@ -814,40 +847,43 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int)
     thread worker([&]()
     {
         int lastZone = -1;
-        int currentMinute = -1;
+        auto nextWeatherUpdate = chrono::steady_clock::now();
+        auto nextWallpaperCheck = chrono::steady_clock::now();
         
-        // 程序启动时立即调用一次天气API
         weatherUpdated = false;
         updateWeather();
         
         while (running)
         {
-            time_t now = time(NULL);
-            tm local;
-            localtime_s(&local, &now);
+            auto now = chrono::steady_clock::now();
             
-            // 每10分钟更新一次天气
-            if (local.tm_min % 10 == 0 && local.tm_min != currentMinute)
+            if (now >= nextWeatherUpdate)
             {
                 weatherUpdated = false;
                 updateWeather();
-                currentMinute = local.tm_min;
+                nextWeatherUpdate = now + chrono::minutes(5);
             }
             
-            double angle = getSolarAltitude();
-            int zone = getZone(angle);
-            wstring target = getWeatherWallpaperPath(zone, weathercode);
-
-            if (zone != lastZone || weatherUpdated)
+            if (now >= nextWallpaperCheck)
             {
-                if (getCurrentWallpaper() != target)
-                    setWallpaper(target.c_str());
-                lastZone = zone;
-            }
+                double angle = getSolarAltitude();
+                int zone = getZone(angle);
+                wstring target = getWeatherWallpaperPath(zone, weathercode);
 
-            wstring nextSwitchTime = calculateNextSwitchTime();
-            updateTray(angle, target, nextSwitchTime);
-            this_thread::sleep_for(chrono::seconds(60));
+                if (zone != lastZone || weatherUpdated)
+                {
+                    if (getCurrentWallpaper() != target)
+                        setWallpaper(target.c_str());
+                    lastZone = zone;
+                }
+
+                wstring nextSwitchTime = calculateNextSwitchTime();
+                updateTray(angle, target, nextSwitchTime);
+                nextWallpaperCheck = now + chrono::minutes(1);
+            }
+            
+            auto nextWake = min(nextWeatherUpdate, nextWallpaperCheck);
+            this_thread::sleep_until(nextWake);
         }
     });
 

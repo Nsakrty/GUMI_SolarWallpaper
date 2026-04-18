@@ -60,7 +60,8 @@ echo 3. Disable startup
 echo 4. Start now
 echo 5. Stop now
 echo 6. Restart
-echo 7. Exit
+echo 7. Recode Program
+echo 8. Exit
 echo --------------------------------
 echo.
 
@@ -72,7 +73,8 @@ if "%choice%"=="3" goto disable
 if "%choice%"=="4" goto startnow
 if "%choice%"=="5" goto stopnow
 if "%choice%"=="6" goto restart
-if "%choice%"=="7" exit
+if "%choice%"=="7" goto recode
+if "%choice%"=="8" exit
 
 goto menu
 
@@ -329,6 +331,22 @@ if !errorlevel!==0 (
     echo SolarWallpaper restarted successfully.
 ) else (
     echo Failed to restart SolarWallpaper.
+)
+
+pause
+goto menu
+
+:recode
+cls
+echo Recoding SolarWallpaper...
+echo.
+
+if exist "coding.cmd" (
+    call "coding.cmd"
+) else (
+    echo ERROR: coding.cmd not found.
+    pause
+    goto menu
 )
 
 pause
