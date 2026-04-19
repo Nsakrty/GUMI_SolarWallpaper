@@ -470,7 +470,7 @@ wstring getWeatherWallpaperPath(int zone, int weatherCode)
 // ================= 下次切换时间计算 =================
 //
 
-wstring calculateNextSwitchTime(time_t* testTimePtr = NULL, bool testMode = false)
+wstring calculateNextStageTime(time_t* testTimePtr = NULL)
 {
     time_t now = testTimePtr ? *testTimePtr : time(NULL);
     tm local;
@@ -618,48 +618,12 @@ wstring calculateNextSwitchTime(time_t* testTimePtr = NULL, bool testMode = fals
                     wchar_t timeStr[32];
                     swprintf_s(timeStr, L"%02d:%02d", preciseTime.tm_hour, preciseTime.tm_min);
                     
-                    // 测试模式：显示详细信息
-                    if (testMode)
-                    {
-                        wchar_t testMsg[512];
-                        swprintf_s(testMsg, 512,
-                            L"Test Mode Result:\n\n"
-                            L"Input Time: %02d:%02d\n"
-                            L"Current Angle: %.2f°, Zone: %d\n"
-                            L"Next Threshold: %.2f°\n"
-                            L"Next Switch: %02d:%02d\n"
-                            L"Switch Angle: %.2f°\n"
-                            L"Search Steps: %d (10min) + %d (1min)",
-                            local.tm_hour, local.tm_min,
-                            currentAngle, currentZone,
-                            nextThreshold,
-                            preciseTime.tm_hour, preciseTime.tm_min,
-                            preciseAngle,
-                            i + 1, j + 1
-                        );
-                        MessageBoxW(NULL, testMsg, L"Test Mode", MB_OK);
-                    }
+
                     
                     return timeStr;
                 }
             }
         }
-    }
-    
-    if (testMode)
-    {
-        wchar_t testMsg[256];
-        swprintf_s(testMsg, 256,
-            L"Test Mode Result:\n\n"
-            L"Input Time: %02d:%02d\n"
-            L"Current Angle: %.2f°, Zone: %d\n"
-            L"Next Threshold: %.2f°\n"
-            L"Result: No switch today",
-            local.tm_hour, local.tm_min,
-            currentAngle, currentZone,
-            nextThreshold
-        );
-        MessageBoxW(NULL, testMsg, L"Test Mode", MB_OK);
     }
     
     return L"No switch today";
@@ -694,7 +658,7 @@ void updateTray(double angle, const wstring& wallpaper, const wstring& nextSwitc
         if (weatherUpdated) {
             swprintf_s(
                 text,
-                L"Solar Altitude: %.2f°\nWallpaper: %s\nNext Switch: %s\nWeather:%s(%d)",
+                L"Solar Altitude: %.2f°\nWallpaper: %s\nNext Stage: %s\nWeather:%s(%d)",
                 angle,
                 getFilename(wallpaper).c_str(),
                 nextSwitchTime.c_str(),
@@ -704,7 +668,7 @@ void updateTray(double angle, const wstring& wallpaper, const wstring& nextSwitc
         } else {
             swprintf_s(
                 text,
-                L"Solar Altitude: %.2f°\nWallpaper: %s\nNext Switch: %s\nWeather:%s(%d)(last)",
+                L"Solar Altitude: %.2f°\nWallpaper: %s\nNext Stage: %s\nWeather:%s(%d)(last)",
                 angle,
                 getFilename(wallpaper).c_str(),
                 nextSwitchTime.c_str(),
@@ -715,7 +679,7 @@ void updateTray(double angle, const wstring& wallpaper, const wstring& nextSwitc
     } else {
         swprintf_s(
             text,
-            L"Solar Altitude: %.2f°\nWallpaper: %s\nNext Switch: %s",
+            L"Solar Altitude: %.2f°\nWallpaper: %s\nNext Stage: %s",
             angle,
             getFilename(wallpaper).c_str(),
             nextSwitchTime.c_str()
@@ -784,7 +748,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             int zone = getZone(angle);
             wstring target = getWeatherWallpaperPath(zone, weathercode);
             setWallpaper(target.c_str());
-            wstring nextSwitchTime = calculateNextSwitchTime();
+            wstring nextSwitchTime = calculateNextStageTime();
             updateTray(angle, target, nextSwitchTime);
         }
         if (LOWORD(wParam) == ID_TRAY_STARTUP)
@@ -894,7 +858,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, LPWSTR, int)
                     lastZone = zone;
                 }
 
-                wstring nextSwitchTime = calculateNextSwitchTime();
+                wstring nextSwitchTime = calculateNextStageTime();
                 updateTray(angle, target, nextSwitchTime);
                 nextWallpaperCheck = now + chrono::minutes(1);
             }

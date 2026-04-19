@@ -16,7 +16,7 @@ Designed as a lightweight, standalone background utility with system tray integr
 - System tray icon with live status display  
 - Displays current solar altitude (two decimal precision)
 - Displays current wallpaper state
-- Displays next scheduled switch time
+- Displays next scheduled stage time
 - Displays current weather condition
 - Automatic location detection (IP-based)
 - GPS location detection support
@@ -306,7 +306,7 @@ Nsakrty
 ### v1.1.0
 - ✅ 5 wallpaper zones (Night, Sunrise/Sunset, Morning/Evening, Daytime, Noon)
 - ✅ Configurable thresholds in config.ini
-- ✅ Next switch time prediction
+- ✅ Next stage time prediction
 - ✅ Enhanced tray tooltip with detailed information
 - ✅ Real-time config reloading
 - ✅ Descriptive wallpaper filenames
@@ -349,7 +349,7 @@ Nsakrty
 - 托盘图标实时状态显示
 - 显示太阳高度角（两位小数）
 - 显示当前壁纸状态
-- 显示下次切换时间
+- 显示下一阶段时间
 - 显示当前天气状况
 - 支持自动定位（IP定位）
 - 支持GPS定位
@@ -471,7 +471,7 @@ startup.cmd
 
 - 当前太阳高度角
 - 当前壁纸状态
-- 下次切换时间
+- 下一阶段时间
 
 右键菜单：
 
@@ -600,7 +600,7 @@ Nsakrty
 ### v1.1.0
 - ✅ 5个壁纸区域（夜晚、日出/日落、早晨/傍晚、白天、正午）
 - ✅ 配置文件中可自定义阈值
-- ✅ 下次切换时间预测
+- ✅ 下一阶段时间预测
 - ✅ 增强的托盘提示信息
 - ✅ 实时配置重载
 - ✅ 描述性壁纸文件名
