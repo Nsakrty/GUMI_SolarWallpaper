@@ -10,10 +10,11 @@ Designed as a lightweight, standalone background utility with system tray integr
 
 ## Features
 
-- Real-time solar altitude calculation  
-- Automatic wallpaper switching based on solar angle  
-- Weather-based wallpaper adaptation  
-- System tray icon with live status display  
+- Real-time solar altitude calculation
+- Automatic wallpaper switching based on solar angle
+- Weather-based wallpaper adaptation
+- Rainy weather wallpaper support
+- System tray icon with live status display
 - Displays current solar altitude (two decimal precision)
 - Displays current wallpaper state
 - Displays next scheduled stage time
@@ -56,6 +57,7 @@ Additionally, the program fetches real-time weather data from Open-Meteo API and
 
 - Clear weather → Standard wallpaper
 - Cloudy weather → Cloudy variant wallpaper
+- Rainy weather → Rain variant wallpaper (with intelligent fallback: tries current zone first, then day, then night)
 - Other weather conditions → Corresponding weather-specific wallpapers (if available)
 
 Wallpaper switching occurs automatically when entering a new zone or when weather conditions change.
@@ -80,14 +82,19 @@ GUMI_SolarWallpaper/
 └─ wallpaper/
    ├─ night.JPG
    ├─ night_cloudy.jpg
+   ├─ night_rain.jpg
    ├─ sunrise_sunset.JPG
    ├─ sunrise_sunset_cloudy.JPG
+   ├─ sunrise_sunset_rain.jpg
    ├─ morning.jpg
    ├─ morning_cloudy.jpg
+   ├─ morning_rain.jpg
    ├─ day.JPG
    ├─ day_cloudy.jpg
+   ├─ day_rain.jpg
    ├─ noon.JPG
-   └─ noon_cloudy.JPG
+   ├─ noon_cloudy.JPG
+   └─ noon_rain.jpg
 ```
 
 No installation required.
@@ -159,6 +166,7 @@ Tray icon displays:
 - Current solar altitude
 - Current wallpaper state
 - Next scheduled switch time
+- Current weather condition
 
 Right-click tray icon:
 
@@ -220,6 +228,30 @@ Example accuracy:
 4 decimals → ~11 meters
 6 decimals → ~0.11 meters
 ```
+
+---
+
+## Weather codes supported
+
+The program automatically detects the following weather conditions:
+
+**Cloudy weather:**
+- Code 2: Mainly clear
+- Code 3: Partly cloudy
+
+**Rainy weather:**
+- Code 51: Light drizzle
+- Code 53: Moderate drizzle
+- Code 55: Dense drizzle
+- Code 61: Light rain
+- Code 63: Moderate rain
+- Code 65: Heavy rain
+- Code 80: Slight rain showers
+- Code 81: Moderate rain showers
+- Code 82: Violent rain showers
+- Code 95: Thunderstorm
+- Code 96: Thunderstorm with slight hail
+- Code 99: Thunderstorm with heavy hail
 
 ---
 
@@ -290,7 +322,11 @@ Nsakrty
 
 ## Version History
 
-### v1.2.0 (Latest)
+### v1.2.1 (Latest)
+- ✅ Rainy weather wallpaper support (12 weather codes: 51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99)
+- ✅ Intelligent rainy wallpaper fallback (tries current zone → day → night)
+
+### v1.2.0
 - ✅ Weather-based wallpaper adaptation
 - ✅ Real-time weather data from Open-Meteo API
 - ✅ Cloudy weather wallpaper variants
@@ -346,6 +382,7 @@ Nsakrty
 - 实时太阳高度角计算
 - 自动切换壁纸
 - 基于天气的壁纸适配
+- 雨天天气壁纸支持
 - 托盘图标实时状态显示
 - 显示太阳高度角（两位小数）
 - 显示当前壁纸状态
@@ -389,6 +426,7 @@ Nsakrty
 
 - 晴朗天气 → 标准壁纸
 - 多云天气 → 多云变体壁纸
+- 雨天天气 → 雨天变体壁纸（智能回退：优先尝试当前时段 → 白天 → 夜晚）
 - 其他天气状况 → 相应的天气专用壁纸（如果可用）
 
 当进入新区间或天气状况变化时，会自动切换壁纸。
@@ -472,6 +510,7 @@ startup.cmd
 - 当前太阳高度角
 - 当前壁纸状态
 - 下一阶段时间
+- 当前天气状况
 
 右键菜单：
 
@@ -526,6 +565,30 @@ day=50
 ```
 4–6位小数
 ```
+
+---
+
+## 支持的天气代码
+
+程序自动识别以下天气状况：
+
+**多云天气：**
+- 代码 2: 大致晴天
+- 代码 3: 部分多云
+
+**雨天天气：**
+- 代码 51: 小毛毛雨
+- 代码 53: 中等毛毛雨
+- 代码 55: 密集毛毛雨
+- 代码 61: 小雨
+- 代码 63: 中雨
+- 代码 65: 大雨
+- 代码 80: 小阵雨
+- 代码 81: 中阵雨
+- 代码 82: 强阵雨
+- 代码 95: 雷暴
+- 代码 96: 雷暴伴小冰雹
+- 代码 99: 雷暴伴大冰雹
 
 ---
 
@@ -584,7 +647,11 @@ Nsakrty
 
 ## 版本历史
 
-### v1.2.0（最新）
+### v1.2.1（最新）
+- ✅ 雨天天气壁纸支持（12个天气代码：51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99）
+- ✅ 智能雨天壁纸回退机制（优先尝试当前时段 → 白天 → 夜晚）
+
+### v1.2.0
 - ✅ 基于天气的壁纸适配
 - ✅ 从 Open-Meteo API 获取实时天气数据
 - ✅ 多云天气壁纸变体
