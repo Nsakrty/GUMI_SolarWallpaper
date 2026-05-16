@@ -55,7 +55,8 @@ vector<WeatherWallpaperMap> weatherWallpaperMaps = {
     // 特定映射
     {3, 4, 3, L"_cloudy"},    // Cloudy + noon → day_cloudy.jpg (使用 day 时段的壁纸)
     // 未来扩展
-    {51, -1, -1, L"_rain"},   // Rain + 所有时段 → {时段}_rain.JPG
+    {61, -1, -1, L"_rain"},   // Rain + 所有时段 → {时段}_rain.JPG
+    
     {71, -1, -1, L"_snow"},   // Snow + 所有时段 → {时段}_snow.JPG
     {45, -1, -1, L"_fog"},    // Fog + 所有时段 → {时段}_fog.JPG
 };
@@ -425,6 +426,14 @@ bool isCloudyWeather(int code)
     return code == 2 || code == 3;
 }
 
+bool isRainyWeather(int code)
+{
+    return code == 51 || code == 53 || code == 55 ||
+           code == 61 || code == 63 || code == 65 ||
+           code == 80 || code == 81 || code == 82 ||
+           code == 95 || code == 96 || code == 99;
+}
+
 wstring getWeatherWallpaperPath(int zone, int weatherCode)
 {
     wstring defaultPath = WALLPAPERS[zone];
@@ -462,7 +471,50 @@ wstring getWeatherWallpaperPath(int zone, int weatherCode)
         }
     }
 
-    // 3. 最终回退到默认壁纸
+    // 3. 雨天逻辑：先尝试当前时段，再尝试白天，最后夜晚
+    if (isRainyWeather(weatherCode)) {
+        wstring rainSuffix = L"_rain";
+
+        // 3.1 尝试当前时段的雨天壁纸
+        wstring basePath = WALLPAPERS[zone];
+        size_t dotPos = basePath.rfind(L'.');
+        if (dotPos != wstring::npos) {
+            wstring weatherPath = basePath.substr(0, dotPos) + rainSuffix + basePath.substr(dotPos);
+            FILE* f = _wfopen(weatherPath.c_str(), L"rb");
+            if (f) {
+                fclose(f);
+                return weatherPath;
+            }
+        }
+
+        // 3.2 如果不是夜晚，尝试白天的雨天壁纸
+        if (zone != 0) {
+            basePath = WALLPAPERS[3]; // day
+            dotPos = basePath.rfind(L'.');
+            if (dotPos != wstring::npos) {
+                wstring weatherPath = basePath.substr(0, dotPos) + rainSuffix + basePath.substr(dotPos);
+                FILE* f = _wfopen(weatherPath.c_str(), L"rb");
+                if (f) {
+                    fclose(f);
+                    return weatherPath;
+                }
+            }
+        }
+
+        // 3.3 否则使用夜晚的雨天壁纸
+        basePath = WALLPAPERS[0]; // night
+        dotPos = basePath.rfind(L'.');
+        if (dotPos != wstring::npos) {
+            wstring weatherPath = basePath.substr(0, dotPos) + rainSuffix + basePath.substr(dotPos);
+            FILE* f = _wfopen(weatherPath.c_str(), L"rb");
+            if (f) {
+                fclose(f);
+                return weatherPath;
+            }
+        }
+    }
+
+    // 4. 最终回退到默认壁纸
     return defaultPath;
 }
 
